@@ -3,7 +3,6 @@ from datetime import datetime, date
 import requests
 import os
 from dateutil.relativedelta import relativedelta
-from sqlalchemy import true
 
 
 class getRawData():
