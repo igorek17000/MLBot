@@ -90,7 +90,8 @@ class rawDataProcessing():
                     [pd.read_csv(raw_path), pd.read_csv(nd_raw_path)])
 
             # 売り注文のみにする。（両方入れるとダブルカウントになる予感...）
-            pdf_ed = pdf.loc[pdf['side'] == "BUY"].reset_index()
+            pdf_ed = pdf.loc[pdf['side'] == "BUY"]
+            pdf_ed = pdf_ed.loc[pdf_ed['size'] > 0]
 
             pdf_ed = pdf_ed.assign(timestamp=pd.to_datetime(
                 pdf_ed.timestamp, format="%Y-%m-%d %H:%M:%S.%f"))

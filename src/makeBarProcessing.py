@@ -65,6 +65,8 @@ class makeBarProcessing():
 
         for tg_dt in tg_dt_list:
             tg_dt_bar = [bar for bar in bar_list if bar["date"] == tg_dt]
+            if len(tg_dt_bar) == 0:
+                continue
 
             out_file_path = out_file_format.format(
                 y=tg_dt.year,
