@@ -6,6 +6,7 @@ import pandas as pd
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from lib import util
+from typing import List
 
 
 class makeBarProcessing():
@@ -51,6 +52,20 @@ class makeBarProcessing():
 
         return self.BAR_FUNC_DICT[bar_type](from_dt=from_dt, to_dt=to_dt, **args)
 
+    def _write_bar_list_by_dt(self, bar_list: List[dict], out_file_format: str, from_dt: date, to_dt: date) -> None:
+        tg_dt_list = util.create_date_list(from_dt=from_dt, to_dt=to_dt)
+
+        for tg_dt in tg_dt_list:
+            tg_dt_bar = [bar for bar in bar_list if bar["date"] == tg_dt]
+
+            out_file_path = out_file_format.format(
+                y=tg_dt.year,
+                m=tg_dt.month,
+                d=tg_dt.day
+            )
+            util.mkdir(out_file_path)
+            pd.DataFrame(tg_dt_bar).to_pickle(out_file_path)
+
     def _make_doll_bar(self, from_dt: date, to_dt: date, threshold: int) -> bool:
         """ドルバーを作成する関数。
 
@@ -67,27 +82,30 @@ class makeBarProcessing():
         SITE = self.dl_site
         FORMATED_DIR = self.raw_formated_data_dir + f"{SITE}/{MARKET}/"
 
-        OUT_DIR = self.out_dir + f"{SITE}/{MARKET}/"
+        OUT_DIR = self.out_dir + f"{SITE}/{MARKET}/doll/threshold={threshold}/"
         OUT_FILE_FORMAT = (
-            OUT_DIR + "y={y}/m={m:0=2}/d={d:0=2}/process_bar.pkl"
+            OUT_DIR + "bar/y={y}/m={m:0=2}/d={d:0=2}/process_bar.pkl"
+        )
+        TMP_OUT_FILE_FORMAT = (
+            OUT_DIR + "tmp/y={y}/m={m:0=2}/d={d:0=2}/tmp_bar.pkl"
         )
 
         print(MARKET, FORMATED_DIR, OUT_DIR, from_dt, to_dt)
 
-        # 1日前も読み込む
-        from_dt_yesterday = from_dt + relativedelta(days=-1)
         pdf, success_flg = util.read_pickle_data_to_df(
-            dir_path=FORMATED_DIR, file_name=self.FORMATED_FILE_NAME, from_dt=from_dt_yesterday, to_dt=to_dt)
+            dir_path=FORMATED_DIR, file_name=self.FORMATED_FILE_NAME, from_dt=from_dt, to_dt=to_dt)
 
         print("■ 一度のトラフィックでの閾値越えを例外処理")
         pre_traffic = pdf.to_numpy()
         traffic = []
         for volume, price, timestamp in pre_traffic:
             sum_price = volume * price
-            unit_volume = (volume * threshold) / sum_price
+            unit_volume = (volume * threshold) / sum_price  # 1閾値あたりの出来高を計算
             now_volume = volume
             now_sum_price = sum_price
 
+            # 1閾値を超えているものは、複数のレコードに分割する。
+            # 出来高を調整して、合計取引額を1閾値以下に調整するイメージ
             while now_sum_price > threshold:
 
                 traffic.append((
@@ -108,20 +126,64 @@ class makeBarProcessing():
         # pdf2.to_csv('traffic.csv')
 
         print("■ ohlcv形式でバーを作成")
-        bar_list = []
-        sum_sum_price = 0
-        sum_volume = 0
-        open_price = 0
-        min_price = 0
-        max_price = 0
+        print("■■ 初期値の設定。前日の記録データがあればそれを使用")
+        from_dt_yesterday = from_dt + relativedelta(days=-1)
+        tmp_file_path = TMP_OUT_FILE_FORMAT.format(
+            y=from_dt_yesterday.year,
+            m=from_dt_yesterday.month,
+            d=from_dt_yesterday.day
+        )
+        if util.get_file_exists(tmp_file_path):
+            yesterday_tmp = pd.read_pickle(tmp_file_path)
+            sum_sum_price = yesterday_tmp.loc[0, "sum_sum_price"]
+            sum_volume = yesterday_tmp.loc[0, "volume"]
+            open_price = yesterday_tmp.loc[0, "open"]
+            min_price = yesterday_tmp.loc[0, "low"]
+            max_price = yesterday_tmp.loc[0, "high"]
+            today = yesterday_tmp.loc[0, "date"]
+        else:
+            sum_sum_price = 0
+            sum_volume = 0
+            open_price = 0
+            min_price = 0
+            max_price = 0
+            today = traffic[0][2].date()
 
-        for volume, price, timestamp in traffic:
+        # 中途半端なレコードを一時記録する関数。
+        def tmp_record():
+            tmp_file_path = TMP_OUT_FILE_FORMAT.format(
+                y=today.year,
+                m=today.month,
+                d=today.day
+            )
+            util.mkdir(tmp_file_path)
+            pd.DataFrame([{
+                "sum_sum_price": sum_sum_price,
+                "open": open_price,
+                "low": min_price,
+                "high": max_price,
+                "volume": sum_volume,
+                "date": today
+            }]).to_pickle(tmp_file_path)
+
+        print("■■ barの作成")
+        bar_list = []
+        for i, tr in enumerate(traffic):
+            volume, price, timestamp = tr
+
+            # 日の変わるタイミング or 最後のレコードの時点で中途半端なものは記録しておく。
+            if timestamp.date() > today:
+                tmp_record()
+                today = timestamp.date()
+
             sum_price = volume * price
             sum_sum_price += sum_price
 
             min_price = min(min_price, price)
             max_price = max(max_price, price)
 
+            # 閾値を超えていたら、bar_listに追加する。
+            # 最終的に、閾値を超えた分の取引のみがデータとして取得できる。中途半端に余ったものは次回に持ち越し。
             if sum_sum_price >= threshold:
 
                 left_price = sum_sum_price - threshold
@@ -147,28 +209,33 @@ class makeBarProcessing():
             else:
                 sum_volume += volume
 
+            if (i + 1) == len(traffic):
+                tmp_record()
+                today = timestamp.date()
             # ohlcv = pd.DataFrame(bar_list)
             # ohlcv["sum_price"] = ohlcv["volume"] * ohlcv["close"]
             # ohlcv.to_csv('ohlcv.csv')
 
-        tg_dt_list = util.create_date_list(from_dt=from_dt, to_dt=to_dt)
-
-        for tg_dt in tg_dt_list:
-            tg_dt_bar = [bar for bar in bar_list if bar["date"] == tg_dt]
-
-            out_file_path = OUT_FILE_FORMAT.format(
-                y=tg_dt.year,
-                m=tg_dt.month,
-                d=tg_dt.day
-            )
-            util.mkdir(out_file_path)
-            pd.DataFrame(tg_dt_bar).to_pickle(out_file_path)
-
+        self._write_bar_list_by_dt(
+            bar_list=bar_list,
+            out_file_format=OUT_FILE_FORMAT,
+            from_dt=from_dt,
+            to_dt=to_dt
+        )
         print("Finish")
 
         return success_flg
 
 
-c = makeBarProcessing("BTC", "GMO")
-c.make_bar(date(2022, 5, 1), date(2022, 5, 2), {
-           "type": "doll", "threshold": 1000000})
+# c = makeBarProcessing("BTC", "GMO")
+# c.make_bar(date(2018, 9, 5), date(2018, 9, 10), {
+#            "type": "doll", "threshold": 1000000})
+
+# pd.read_pickle(
+#     "/mnt/g/workspace/MLBot/data/processing/raw_formart/GMO/BTC/y=2018/m=09/d=06/process_raw_format.pkl").to_csv('aaa.csv')
+
+# pd.read_pickle(
+#     "/mnt/g/workspace/MLBot/data/processing/bar/GMO/BTC/doll/threshold=1000000/bar/y=2018/m=09/d=05/process_bar.pkl")
+# pd.read_pickle(
+#     "/mnt/g/workspace/MLBot/data/processing/bar/GMO/BTC/doll/threshold=1000000/tmp/y=2018/m=09/d=05/tmp_bar.pkl")
+# # df.to_csv('./test.csv')
