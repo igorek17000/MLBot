@@ -20,7 +20,7 @@ class getRawData():
         self.dl_dir = dl_dir
 
         self.get_data_func = {
-            "BTC_GMO": self.get_BTC_raw_data_from_GMO
+            "BTC_GMO": self._get_BTC_raw_data_from_GMO
         }
 
     def get_data(self, from_dt: date, to_dt: date) -> bool:
@@ -37,7 +37,7 @@ class getRawData():
             self.market + "_" + self.dl_site
         ](from_dt, to_dt)
 
-    def get_BTC_raw_data_from_GMO(self, from_dt: date, to_dt: date) -> bool:
+    def _get_BTC_raw_data_from_GMO(self, from_dt: date, to_dt: date) -> bool:
         """BTC GMOのデータダウンロード
 
         Args:

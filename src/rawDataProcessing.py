@@ -14,8 +14,8 @@ class rawDataProcessing():
         Args:
             market (str): マーケットの指定（BTC,...）
             dl_site (str): ダウンロード元の設定（GMO,...）
-            raw_data_dir (str, optional): rawデータの格納フォルダ. Defaults to "../raw/".
-            out_dir (str, optional): 加工したものの出力先フォルダ. Defaults to "../processing/raw_formart/".
+            raw_data_dir (str, optional): rawデータの格納フォルダ. Defaults to "../data/raw/".
+            out_dir (str, optional): 加工したものの出力先フォルダ. Defaults to "../data/processing/raw_formart/".
         """
         self.market = market
         self.dl_site = dl_site
@@ -23,7 +23,7 @@ class rawDataProcessing():
         self.out_dir = out_dir
 
         self.get_data_func = {
-            "BTC_GMO": self.process_raw_format_BTC_GMO
+            "BTC_GMO": self._process_raw_format_BTC_GMO
         }
 
     def process_raw_format(self, from_dt: date, to_dt: date) -> bool:
@@ -40,7 +40,7 @@ class rawDataProcessing():
             self.market + "_" + self.dl_site
         ](from_dt, to_dt)
 
-    def process_raw_format_BTC_GMO(self, from_dt: date, to_dt: date) -> bool:
+    def _process_raw_format_BTC_GMO(self, from_dt: date, to_dt: date) -> bool:
         """BTC GMOのデータ加工
 
         Args:
@@ -50,9 +50,10 @@ class rawDataProcessing():
             process_raw_format共通
         """
         MARKET = "BTC_JPY"
+        MARKET_S = "BTC"
         SITE = "GMO"
         RAW_DIR = self.raw_data_dir + f"{SITE}/{MARKET}/"
-        OUT_DIR = self.out_dir + f"{SITE}/{MARKET}/"
+        OUT_DIR = self.out_dir + f"{SITE}/{MARKET_S}/"
         FILE_NAME_FORMAT = (
             RAW_DIR + "y={y}/m={m:0=2}/{y}{m:0=2}{d:0=2}_{MARKET}.csv.gz"
         )
@@ -83,8 +84,14 @@ class rawDataProcessing():
             pdf = pd.read_csv(raw_path)
 
             # 売り注文のみにする。（両方入れるとダブルカウントになる予感...）
-            pdf_ed = pdf.where(pdf['side'] == "BUY")
-            pdf_ed = pdf_ed.loc[:, ["size", "price", "timestamp"]]
+            pdf_ed = pdf.loc[pdf['side'] == "BUY"].reset_index()
+            pdf_ed = (
+                pdf_ed
+                .loc[:, ["size", "price", "timestamp"]]
+                .rename(columns={"size": "volume"})
+            )
+            pdf_ed["timestamp"] = pd.to_datetime(
+                pdf_ed["timestamp"], format="%Y-%m-%d %H:%M:%S.%f")
 
             out_file_path = OUT_FILE_FORMAT.format(**info_dict)
             util.mkdir(out_file_path)
