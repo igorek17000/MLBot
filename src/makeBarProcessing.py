@@ -149,7 +149,7 @@ class makeBarProcessing():
             max_price = 0
             today = traffic[0][2].date()
 
-        # 中途半端なレコードを一時記録する関数。
+        # 中途半端なレコードを一時記録する関数。使いまわしは出来ない想定。
         def tmp_record():
             tmp_file_path = TMP_OUT_FILE_FORMAT.format(
                 y=today.year,
