@@ -67,31 +67,37 @@ class rawDataProcessing():
         date = from_dt
         while date <= to_dt:
             print(date)
-            info_dict = dict(
-                MARKET=MARKET,
-                y=date.year,
-                m=date.month,
-                d=date.day,
-            )
+            info_dict = dict(MARKET=MARKET, y=date.year,
+                             m=date.month, d=date.day,)
+
+            ndate = date + relativedelta(days=1)
+            nd_info_dict = dict(MARKET=MARKET, y=ndate.year,
+                                m=ndate.month, d=ndate.day,)
 
             raw_path = FILE_NAME_FORMAT.format(**info_dict)
-            if not util.get_file_exists(raw_path):
+            nd_raw_path = FILE_NAME_FORMAT.format(**nd_info_dict)
+            if (not util.get_file_exists(raw_path)) or (not util.get_file_exists(nd_raw_path)):
                 print(str(date), ": File Not Exists ERROR")
                 success_flg = False
                 date += relativedelta(days=1)
                 continue
 
-            pdf = pd.read_csv(raw_path)
+            pdf = pd.concat([pd.read_csv(raw_path), pd.read_csv(nd_raw_path)])
 
             # 売り注文のみにする。（両方入れるとダブルカウントになる予感...）
-            pdf_ed = pdf.loc[pdf['side'] == "BUY"].reset_index()
+            pdf_ed = pdf.loc[pdf['side'] == "BUY"]
+
+            pdf_ed["timestamp"] = pd.to_datetime(
+                pdf_ed["timestamp"], format="%Y-%m-%d %H:%M:%S.%f")
+            pdf_ed["date"] = pdf_ed["timestamp"].dt.date
+
+            pdf_ed = pdf_ed.loc[pdf_ed['date'] == date].reset_index()
+
             pdf_ed = (
                 pdf_ed
                 .loc[:, ["size", "price", "timestamp"]]
                 .rename(columns={"size": "volume"})
             )
-            pdf_ed["timestamp"] = pd.to_datetime(
-                pdf_ed["timestamp"], format="%Y-%m-%d %H:%M:%S.%f")
 
             out_file_path = OUT_FILE_FORMAT.format(**info_dict)
             util.mkdir(out_file_path)
@@ -104,4 +110,4 @@ class rawDataProcessing():
 
 
 # c = rawDataProcessing("BTC", "GMO")
-# c.process_raw_format_BTC_GMO(date(2022, 5, 1), date(2022, 5, 2))
+# c.process_raw_format(date(2022, 5, 1), date(2022, 5, 2))

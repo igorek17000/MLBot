@@ -230,12 +230,3 @@ class makeBarProcessing():
 # c = makeBarProcessing("BTC", "GMO")
 # c.make_bar(date(2018, 9, 5), date(2018, 9, 10), {
 #            "type": "doll", "threshold": 1000000})
-
-# pd.read_pickle(
-#     "/mnt/g/workspace/MLBot/data/processing/raw_formart/GMO/BTC/y=2018/m=09/d=06/process_raw_format.pkl").to_csv('aaa.csv')
-
-# pd.read_pickle(
-#     "/mnt/g/workspace/MLBot/data/processing/bar/GMO/BTC/doll/threshold=1000000/bar/y=2018/m=09/d=05/process_bar.pkl")
-# pd.read_pickle(
-#     "/mnt/g/workspace/MLBot/data/processing/bar/GMO/BTC/doll/threshold=1000000/tmp/y=2018/m=09/d=05/tmp_bar.pkl")
-# # df.to_csv('./test.csv')
