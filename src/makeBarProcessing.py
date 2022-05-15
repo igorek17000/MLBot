@@ -53,6 +53,14 @@ class makeBarProcessing():
         return self.BAR_FUNC_DICT[bar_type](from_dt=from_dt, to_dt=to_dt, **args)
 
     def _write_bar_list_by_dt(self, bar_list: List[dict], out_file_format: str, from_dt: date, to_dt: date) -> None:
+        """日付ごとにファイルを分割して出力する関数
+
+        Args:
+            bar_list (List[dict]): 出力するbarのリスト
+            out_file_format (str): 出力するパスのフォーマット
+            from_dt (date): 開始日
+            to_dt (date): 終了日
+        """
         tg_dt_list = util.create_date_list(from_dt=from_dt, to_dt=to_dt)
 
         for tg_dt in tg_dt_list:
@@ -152,9 +160,7 @@ class makeBarProcessing():
         # 中途半端なレコードを一時記録する関数。使いまわしは出来ない想定。
         def tmp_record():
             tmp_file_path = TMP_OUT_FILE_FORMAT.format(
-                y=today.year,
-                m=today.month,
-                d=today.day
+                y=today.year, m=today.month, d=today.day
             )
             util.mkdir(tmp_file_path)
             pd.DataFrame([{
@@ -188,7 +194,6 @@ class makeBarProcessing():
 
                 left_price = sum_sum_price - threshold
                 left_volumne = (volume * left_price) / sum_price
-
                 sum_volume += (volume - left_volumne)
 
                 bar_list.append({
