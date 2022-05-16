@@ -69,6 +69,17 @@ def create_date_list(from_dt: date, to_dt: date) -> List[date]:
 
 
 def read_pickle_data_to_df(dir_path: str, file_name: str, from_dt: date, to_dt: date) -> DataFrame:
+    """pickleファイルを指定期間で読み込む
+
+    Args:
+        dir_path (str): ファイルの格納フォルダのパス
+        file_name (str): ファイル名
+        from_dt (date): 開始日
+        to_dt (date): 終了日
+
+    Returns:
+        DataFrame: 読み込んだテーブルデータ
+    """
     READ_FILE_FORMAT = (
         dir_path + "y={y}/m={m:0=2}/d={d:0=2}/" + file_name
     )
