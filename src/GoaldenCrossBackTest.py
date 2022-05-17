@@ -8,7 +8,7 @@ from lib.backTest import BackTest
 from lib.context import Context
 
 
-class BackTestSetting(IBackTestSetting):
+class GoaldenCrossBackTestSetting(IBackTestSetting):
     def __init__(
         self, rule_name: str, version: str,
         dir_path: str, file_name: str,
@@ -17,6 +17,14 @@ class BackTestSetting(IBackTestSetting):
         experiment_name: str = "MLBot",
         _long_ma_n: int = 25, _short_ma_n: int = 5, _buysell_timing: int = 1
     ) -> None:
+        """_summary_
+
+        Args:
+            ～インターフェース同様なので略～
+            _long_ma_n (int, optional): 長期移動平均のN. Defaults to 25.
+            _short_ma_n (int, optional): 短期移動平均のN. Defaults to 5.
+            _buysell_timing (int, optional): 売買タイミングと判定してから、実際に売買するまでのディレイ. Defaults to 1.
+        """
 
         self.experiment_name = experiment_name
         self.rule_name = rule_name
@@ -37,13 +45,34 @@ class BackTestSetting(IBackTestSetting):
         self._buysell_timing = _buysell_timing
 
     def get_start_idx(self, ohlcv_data):
+        """開始日付の中で最も小さいインデックスを開始インデックスとする
+
+            ～インターフェース同様なので略～
+        """
         tgdt_df = ohlcv_data[ohlcv_data["date"] == self.start_dt]
         return np.min(tgdt_df.index)
 
     def _calc_ma_now(self, td_idx: int, n: int, tg_df: DataFrame, price_col: str) -> float:
+        """移動平均を計算する関数
+
+        Args:
+            td_idx (int): 基準のidx
+            n (int): 移動平均のN
+            tg_df (DataFrame): 対象抽出されたohlcvデータ
+            price_col (str): 価格のカラム名
+
+        Returns:
+            float: _description_
+        """
         return np.mean(tg_df.iloc[td_idx - n + 1:td_idx+1][price_col])
 
     def judge_buysell_timing(self, now_idx: int, ohlcv_data: DataFrame, context: Context) -> dict:
+        """ゴールデンクロスが生じたら買う。
+            下降トレンドに転換したら売る　→　要修正
+
+            ～インターフェース同様なので略～
+        """
+
         # 実際の購買が走るのは次のバーのタイミング
         tg_df = ohlcv_data.iloc[:now_idx+1]
 
@@ -65,6 +94,7 @@ class BackTestSetting(IBackTestSetting):
         buy_idx = None
         sell_idx = None
         buy_volume = 0
+        sell_order_list = []
 
         # N-1 時点では long > short & N 時点では long <= short となり、上に抜いたら買うタイミング
         if (yd_long_ma > yd_short_ma) & (td_long_ma <= td_short_ma):
@@ -76,17 +106,21 @@ class BackTestSetting(IBackTestSetting):
             buy_volume = np.floor(buy_volume) / 1000
 
         # N-1 時点では long < short & N 時点では long >= short となり、下に抜いたら買うタイミング
-        elif (yd_long_ma < yd_short_ma) & (td_long_ma >= td_short_ma):
+        elif (len(context.buy_status) > 0) & (yd_long_ma < yd_short_ma) & (td_long_ma >= td_short_ma):
             sell_flg = True
             sell_idx = now_idx + self._buysell_timing
+            sell_order_list = [context.buy_status[-1]]
 
         return dict(
             idx=now_idx, buy_flg=buy_flg, sell_flg=sell_flg,
-            buy_idx=buy_idx, sell_idx=sell_idx, buy_volume=buy_volume, evidence=evidence)
+            buy_idx=buy_idx, sell_idx=sell_idx,
+            buy_volume=buy_volume, sell_order_list=sell_order_list,
+            evidence=evidence
+        )
 
 
 # context = Context(initial_balance=100000)
-bt_stng = BackTestSetting(
+bt_stng = GoaldenCrossBackTestSetting(
 
     rule_name="test",
     version="test",
