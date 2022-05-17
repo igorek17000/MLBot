@@ -3,9 +3,9 @@
 # os.chdir(os.getcwd() + "/src")
 
 # インポート
-from getData import getRawData
-from rawDataProcessing import rawDataProcessing
-from makeBarProcessing import makeBarProcessing
+from lib.getData import getRawData
+from lib.rawDataProcessing import rawDataProcessing
+from lib.makeBarProcessing import makeBarProcessing
 from datetime import date, datetime
 
 
