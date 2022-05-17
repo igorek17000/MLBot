@@ -1,6 +1,6 @@
 from datetime import date
 from pandas import DataFrame
-from lib.backTest import Context
+from lib.context import Context
 import abc
 
 

@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 
 from lib.IBackTestSetting import IBackTestSetting
-from lib.backTest import BackTest, Context
+from lib.backTest import BackTest
+from lib.context import Context
 
 
 class BackTestSetting(IBackTestSetting):
