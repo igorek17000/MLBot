@@ -275,7 +275,7 @@ class BackTest:
         mlflow.log_metrics(dict(
             final_total_return=self.context.total_return_amount,
             final_total_return_rate=self.context.total_return_amount / bt_stng.initial_balance,
-            period=bt_stng.read_to_dt - bt_stng.start_dt,
+            period=(bt_stng.read_to_dt - bt_stng.start_dt).days,
             total_win_count=len([1 for s in sell_res_list if s["sell_return"] >= 0]),
             total_lose_count=len([1 for s in sell_res_list if s["sell_return"] < 0]),
         ))
