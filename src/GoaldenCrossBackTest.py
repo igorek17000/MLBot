@@ -15,7 +15,9 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
         read_from_dt: date, read_to_dt: date, start_dt: date,
         initial_balance: int, price_col: str,
         experiment_name: str = "MLBot",
-        _long_ma_n: int = 25, _short_ma_n: int = 5, _buysell_timing: int = 1
+        _long_ma_n: int = 25, _short_ma_n: int = 5,
+        _sell_tilt_span: int = 1, _sell_tilt_threshold: float = 0.5,
+        _buysell_timing: int = 1
     ) -> None:
         """_summary_
 
@@ -41,6 +43,9 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
 
         self._long_ma_n = _long_ma_n
         self._short_ma_n = _short_ma_n
+
+        self._sell_tilt_span = _sell_tilt_span
+        self._sell_tilt_threshold = _sell_tilt_threshold
 
         self._buysell_timing = _buysell_timing
 
@@ -68,7 +73,7 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
 
     def judge_buysell_timing(self, now_idx: int, ohlcv_data: DataFrame, context: Context) -> dict:
         """ゴールデンクロスが生じたら買う。
-            下降トレンドに転換したら売る　→　要修正
+           買っている状態で、ショート移動平均の傾きが0に近づいたら売る
 
             ～インターフェース同様なので略～
         """
@@ -106,10 +111,15 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
             buy_volume = np.floor(buy_volume) / 1000
 
         # N-1 時点では long < short & N 時点では long >= short となり、下に抜いたら買うタイミング
-        elif (len(context.buy_status) > 0) & (yd_long_ma < yd_short_ma) & (td_long_ma >= td_short_ma):
-            sell_flg = True
-            sell_idx = now_idx + self._buysell_timing
-            sell_order_list = [context.buy_status[-1]]
+        elif len(context.buy_status) > 0:
+
+            base_short_ma = self._calc_ma_now(now_idx - self._sell_tilt_span, self._short_ma_n, tg_df, self.price_col)
+            sell_tilt = (td_short_ma - base_short_ma) / self._sell_tilt_span
+
+            if sell_tilt <= self._sell_tilt_threshold:
+                sell_flg = True
+                sell_idx = now_idx + self._buysell_timing
+                sell_order_list = [context.buy_status[-1]]
 
         return dict(
             idx=now_idx, buy_flg=buy_flg, sell_flg=sell_flg,
