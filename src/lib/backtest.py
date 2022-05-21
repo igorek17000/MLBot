@@ -8,7 +8,6 @@ from lib import util
 from lib.context import Context
 from lib.IBackTestSetting import IBackTestSetting
 
-
 import mlflow
 
 # # 設定
@@ -54,17 +53,30 @@ class BackTest:
         Returns:
             Tuple[Experiment, Run]
         """
+        mlflow.set_tracking_uri('../results/mlruns/')
         mlflow.set_experiment(self.experiment_name)
         experiment = mlflow.get_experiment_by_name(self.experiment_name)
 
         mlflow.start_run(experiment_id=experiment.experiment_id)
         run = mlflow.active_run()
 
+        bt_stng = self.back_test_setting
         mlflow.set_tags(
-            {
-                "rule_name": self.rule_name,
-                "version": self.version,
-            }
+            dict(
+                rule_name=self.rule_name,
+                version=self.version,
+                read_from_dt=bt_stng.read_from_dt,
+                read_to_dt=bt_stng.read_to_dt,
+                dir_path=bt_stng.dir_path,
+                file_name=bt_stng.file_name,
+                price_col=bt_stng.price_col,
+            )
+        )
+        mlflow.log_params(
+            dict(
+                initial_balance=bt_stng.initial_balance,
+                start_dt=bt_stng.start_dt,
+            )
         )
 
         return experiment, run
@@ -188,6 +200,8 @@ class BackTest:
         """
         # 設定
         bt_stng = self.back_test_setting
+        experiment, run = self._start_mlflow()
+        mlflow.log_params(bt_stng.get_mlflow_params())
 
         # データ読み込み
         ohlcv_data, success_flg = util.read_pickle_data_to_df(
@@ -205,6 +219,8 @@ class BackTest:
         latest_buy_judge_res = None
         latest_sell_judge_res = None
         for idx in range(start_idx, len(ohlcv_data)):
+            # this_return = 0
+
             # 購買する場合
             if idx == next_buy_idx:
                 buy_res = self._buy(
@@ -227,6 +243,8 @@ class BackTest:
                 latest_sell_judge_res = None
                 sell_res_list += sell_res
 
+                # this_return = sum([s["sell_return"] for s in sell_res])
+
             # 次の売買タイミングの取得
             res = bt_stng.judge_buysell_timing(now_idx=idx, ohlcv_data=ohlcv_data, context=self.context)
             res_list.append(res)
@@ -239,9 +257,30 @@ class BackTest:
                 next_sell_idx = res["sell_idx"]
                 latest_sell_judge_res = res
 
+            mlflow.log_metrics(dict(
+                total_return_amount=self.context.total_return_amount,
+                # this_return=this_return,
+                # balance=self.context.balance,
+                # total_buy_count=self.context.total_buy_count,
+                # total_sell_count=self.context.total_sell_count,
+                # total_buy_amount=self.context.total_buy_amount,
+                # total_sell_amount=self.context.total_sell_amount,
+                now_price=ohlcv_data.loc[idx][bt_stng.price_col],
+            ), step=idx)
+
         # mlflow.log_figure(fig, "figure.png")
         # mlflow.log_param("k", list(range(2, 50)))
         # mlflow.log_metric("Silhouette Score", score, step=i)
+
+        mlflow.log_metrics(dict(
+            final_total_return=self.context.total_return_amount,
+            final_total_return_rate=self.context.total_return_amount / bt_stng.initial_balance,
+            period=bt_stng.read_to_dt - bt_stng.start_dt,
+            total_win_count=len([1 for s in sell_res_list if s["sell_return"] >= 0]),
+            total_lose_count=len([1 for s in sell_res_list if s["sell_return"] < 0]),
+        ))
+
+        self._finish_mlflow()
 
         return dict(
             success_flg=success_flg,

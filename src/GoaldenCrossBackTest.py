@@ -49,6 +49,20 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
 
         self._buysell_timing = _buysell_timing
 
+    def get_mlflow_params(self) -> dict:
+        """mlflowに記録するタグを設定
+
+        Returns:
+            dict : タグを記載したディクショナリ
+        """
+        return dict(
+            _long_ma_n=self._long_ma_n,
+            _short_ma_n=self._short_ma_n,
+            _sell_tilt_span=self._sell_tilt_span,
+            _sell_tilt_threshold=self._sell_tilt_threshold,
+            _buysell_timing=self._buysell_timing
+        )
+
     def get_start_idx(self, ohlcv_data):
         """開始日付の中で最も小さいインデックスを開始インデックスとする
 
@@ -132,8 +146,8 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
 # context = Context(initial_balance=100000)
 bt_stng = GoaldenCrossBackTestSetting(
 
-    rule_name="test",
-    version="test",
+    rule_name="GoaldenCross",
+    version="0.1",
 
     dir_path="../data/processing/bar/GMO/BTC/doll/threshold=300000000/bar/",
     file_name="process_bar.pkl",

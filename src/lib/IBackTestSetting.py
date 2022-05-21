@@ -40,6 +40,16 @@ class IBackTestSetting(metaclass=abc.ABCMeta):
         self.price_col = price_col
 
     @abc.abstractmethod
+    def get_mlflow_params(self) -> dict:
+        """mlflowに記録するタグを設定。
+           オプションの設定を記録するためのもの。必須の設定は自動で記録される。
+
+        Returns:
+            dict : タグを記載したディクショナリ
+        """
+        raise NotImplementedError()
+
+    @abc.abstractmethod
     def get_start_idx(self, ohlcv_data: DataFrame) -> int:
         """シミュレーションの開始インデックスを返す関数
 
