@@ -143,7 +143,6 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
         )
 
 
-# context = Context(initial_balance=100000)
 bt_stng = GoaldenCrossBackTestSetting(
 
     rule_name="GoaldenCross",
@@ -164,8 +163,8 @@ bktest = BackTest(back_test_setting=bt_stng)
 res = bktest.run_backtest()
 
 # 結果出力
-buy_res_list = res["buy_res_list"]
-sell_res_list = res["sell_res_list"]
-pd.DataFrame(buy_res_list).to_csv('buy_res_list.csv')
-pd.DataFrame(sell_res_list).to_csv('sell_res_list.csv')
-print(bktest.context.buy_status)
+# buy_res_list = res["buy_res_list"]
+# sell_res_list = res["sell_res_list"]
+# pd.DataFrame(buy_res_list).to_csv('buy_res_list.csv')
+# pd.DataFrame(sell_res_list).to_csv('sell_res_list.csv')
+# print(bktest.context.buy_status)
