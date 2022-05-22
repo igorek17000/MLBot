@@ -1,11 +1,20 @@
-from datetime import date
-from pandas import DataFrame
-import numpy as np
-import pandas as pd
-
-from lib.IBackTestSetting import IBackTestSetting
-from lib.backTest import BackTest
+# %%
+import plotly.express as px
+from plotly.colors import qualitative
+import plotly.graph_objects as go
 from lib.context import Context
+from lib.backTest import BackTest
+from lib.IBackTestSetting import IBackTestSetting
+import pandas as pd
+import numpy as np
+from pandas import DataFrame
+from datetime import date
+
+# %%
+# import os
+# os.chdir('src')
+
+# %%
 
 
 class GoaldenCrossBackTestSetting(IBackTestSetting):
@@ -139,8 +148,18 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
             idx=now_idx, buy_flg=buy_flg, sell_flg=sell_flg,
             buy_idx=buy_idx, sell_idx=sell_idx,
             buy_volume=buy_volume, sell_order_list=sell_order_list,
-            evidence=evidence
+            evidence=evidence  # TODO これ使うと移動平均値とかを記録できる
         )
+
+    def get_judge_evidence_data(self, res: dict) -> DataFrame:
+        """移動平均の値をエビデンスとして出力
+
+        ～～以下、インターフェース同様～～
+        """
+        judge_res_list = res["res_list"]
+
+        evidence_list = [dict(idx=r["idx"], **r["evidence"]) for r in judge_res_list]
+        return pd.DataFrame(evidence_list).set_index('idx')
 
 
 bt_stng = GoaldenCrossBackTestSetting(
@@ -168,3 +187,9 @@ res = bktest.run_backtest()
 # pd.DataFrame(buy_res_list).to_csv('buy_res_list.csv')
 # pd.DataFrame(sell_res_list).to_csv('sell_res_list.csv')
 # print(bktest.context.buy_status)
+
+
+# step_output_data = res["step_output_data"]
+# buy_order_output_data = res["buy_order_output_data"]
+
+# step_output_data = step_output_data.assign(idx=step_output_data.index)

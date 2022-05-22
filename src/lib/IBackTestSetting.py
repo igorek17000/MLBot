@@ -83,3 +83,15 @@ class IBackTestSetting(metaclass=abc.ABCMeta):
             )
         """
         raise NotImplementedError()
+
+    @abc.abstractmethod
+    def get_judge_evidence_data(self, res: dict) -> DataFrame:
+        """アウトプット用のエビデンス出力
+
+        Args:
+            res (dict): バックテストのリターンと同様のdict
+
+        Raises:
+            DataFrame: idxをインデックスとしたpd.DataFrame
+        """
+        raise NotImplementedError()

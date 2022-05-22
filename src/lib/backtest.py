@@ -4,10 +4,13 @@
 from typing import Tuple, List
 from mlflow.entities import Experiment, Run
 from numpy import float64
+from pandas import DataFrame
+from scipy import stats
 from lib import util
 from lib.context import Context
 from lib.IBackTestSetting import IBackTestSetting
-
+import pandas as pd
+import numpy as np
 import mlflow
 
 # # 設定
@@ -122,6 +125,8 @@ class BackTest:
             idx=now_idx,
             buy_success_flg=buy_success_flg,
             amount=amount,
+            buy_price=price,
+            buy_volume=volume,
             balance=context.balance,
             total_buy_count=context.total_buy_count,
             total_buy_amount=context.total_buy_amount,
@@ -175,6 +180,8 @@ class BackTest:
                     buy_idx=buy_idx,
                     sell_success_flg=sell_success_flg,
                     amount=amount,
+                    sell_price=price,
+                    sell_volume=latest_buy.volume,
                     sell_return=sell_return,
                     balance=context.balance,
                     total_sell_count=context.total_sell_count,
@@ -185,6 +192,181 @@ class BackTest:
             context.buy_status.remove(sell_order)
 
         return selled_order_list
+
+    def _output_dataframe_to_csv_mflow(self, df: DataFrame, df_name: str) -> str:
+        """DataFrameをCSV出力してmlflowで記録
+
+        Args:
+            df (DataFrame): 出力したいdataフレーム
+            df_name (str): ファイル名（拡張子なし）
+
+        Returns:
+            str: 出力パス
+        """
+        path = f"../results/output/{df_name}.csv"
+        df.to_csv(path)
+        mlflow.log_artifact(path)
+
+        return path
+
+    def _create_step_output_data(self, return_dict: dict) -> DataFrame:
+        """ステップ（インデックスidx）ごとの各種値をDataFrameとして作成
+
+        Args:
+            return_dict (dict): バックテストの最終リターンのdict
+
+        Returns:
+            DataFrame: ステップidxをインデックスとしたdataフレーム
+        """
+        res = return_dict
+
+        start_idx = res["start_idx"]
+        ohlcv_data = res["ohlcv_data"]
+        judge_res_list = res["res_list"]
+        buy_res_list = res["buy_res_list"]
+        sell_res_list = res["sell_res_list"]
+        metric_list = res["metric_list"]
+
+        # 売買判定結果
+        judge_res = pd.DataFrame(judge_res_list)
+        judge_res = (
+            judge_res
+            .assign(sell_order_count=judge_res["sell_order_list"].str.len())
+            .rename(
+                columns={
+                    "buy_flg": "buy_judge_flg",
+                    "sell_flg": "sell_judge_flg",
+                }
+            )
+            .loc[:, ["idx", "buy_judge_flg", "sell_judge_flg", "sell_order_count"]]
+            .set_index('idx')
+        )
+
+        # 購買結果
+        buy_res = pd.DataFrame(buy_res_list)
+        buy_res = (
+            buy_res[buy_res["buy_success_flg"] == True]
+            .rename(columns={"amount": "buy_amount", })
+            .loc[:, ["idx", "buy_amount", "buy_price", "buy_volume", "buy_success_flg"]]
+            .set_index('idx')
+        )
+
+        # 売却結果
+        sell_res = pd.DataFrame(sell_res_list)
+        sell_res = (
+            sell_res[sell_res["sell_success_flg"] == True]
+            .rename(columns={"amount": "sell_amount", })
+            .loc[:, ["idx", "sell_amount", "sell_price", "sell_volume", "sell_return"]]
+        )
+        sell_res = (
+            sell_res
+            .groupby(["idx"]).agg('sum')
+            .reset_index()
+            .set_index('idx')
+        )
+
+        # 出力指標
+        metric = (
+            pd.DataFrame(metric_list)
+            .loc[:, ["idx", "total_return_amount"]]
+            .set_index('idx')
+        )
+
+        # 購買判定のエビデンス
+        evidence = self.back_test_setting.get_judge_evidence_data(res)
+
+        # 結合
+        ohlcv_data_ed = (
+            ohlcv_data
+            .iloc[start_idx:]
+            .join(judge_res, how='left')
+            .join(buy_res, how='left')
+            .join(sell_res, how='left')
+            .join(metric, how='left')
+            .join(evidence, how='left')
+            .assign(win_flg=lambda x: x.sell_return >= 0)
+            .fillna({"buy_success_flg": False})
+        )
+
+        # 勝率推移
+        ohlcv_data_win_cumsum = (
+            ohlcv_data_ed
+            .loc[:, ["win_flg", "buy_success_flg"]]
+            .cumsum()
+            .rename(columns={"win_flg": "win_count", "buy_success_flg": "buy_count", })
+            .assign(win_rate=lambda x: x.win_count / x.buy_count)
+        )
+
+        # 最終アウトプット
+        ohlcv_data_ed = (
+            ohlcv_data_ed
+            .join(ohlcv_data_win_cumsum, how='left')
+        )
+
+        return ohlcv_data_ed
+
+    def _create_buy_order_output_data(self, return_dict: dict) -> Tuple[DataFrame, dict]:
+        res = return_dict
+
+        buy_res_list = res["buy_res_list"]
+        sell_res_list = res["sell_res_list"]
+
+        buy_res = pd.DataFrame(buy_res_list)
+        sell_res = pd.DataFrame(sell_res_list)
+
+        buy_res = (
+            buy_res[buy_res["buy_success_flg"] == True]
+            .rename(columns={"amount": "buy_amount", })
+            .loc[:, ["idx", "buy_amount", "buy_price", "buy_volume", "buy_success_flg"]]
+            .set_index('idx')
+        )
+        sell_res = (
+            sell_res[sell_res["sell_success_flg"] == True]
+            .loc[:, ["buy_idx", "amount", "sell_price", "sell_volume", "sell_return"]]
+            .rename(columns={"amount": "sell_amount", "buy_idx": "idx"})
+            .set_index('idx')
+        )
+
+        buy_res_joined = (
+            buy_res
+            .join(sell_res, how='left')
+            .assign(retur_rate=lambda x: (x.sell_amount / x.buy_amount) - 1)
+        )
+
+        return_rate_list = buy_res_joined["retur_rate"].to_numpy()
+        return_rate_mean = np.mean(return_rate_list)  # 期待値
+        return_rate_std = np.std(return_rate_list, ddof=1)  # 不偏標準偏差
+        shape_ratio = return_rate_mean / return_rate_std  # 無リスク資産の収益率は0とする。
+
+        sell_return_list = buy_res_joined["sell_return"].to_numpy()
+        sell_return_mean = np.mean(sell_return_list)  # 期待値
+        sell_return_std = np.std(sell_return_list, ddof=1)  # 不偏標準偏差
+
+        # 帰無仮説　リターンの期待値は、0よりも小さい
+        t_res = stats.ttest_1samp(sell_return_list, 0.0, alternative="less")
+        t_value = t_res.statistic
+        p_value = t_res.pvalue
+
+        t_result = None
+        if p_value <= 0.005:
+            t_result = "0.5%有意"
+        elif p_value <= 0.01:
+            t_result = "1%有意"
+        elif p_value <= 0.05:
+            t_result = "5%有意"
+        else:
+            t_result = "有意でない"
+
+        return buy_res_joined, dict(
+            sell_rtn_mean=sell_return_mean,
+            sell_rtn_std=sell_return_std,
+            sell_rtn_t_value=t_value,
+            sell_rtn_p_value=p_value,
+            sell_rtn_t_result=t_result,
+            return_rate_mean=return_rate_mean,
+            return_rate_std=return_rate_std,
+            shape_ratio=shape_ratio
+        )
 
     def run_backtest(self) -> dict:
         """バックテストを実行する関数
@@ -214,6 +396,7 @@ class BackTest:
         res_list = []
         buy_res_list = []
         sell_res_list = []
+        metric_list = []
         next_buy_idx = None
         next_sell_idx = None
         latest_buy_judge_res = None
@@ -256,35 +439,62 @@ class BackTest:
             elif res["sell_flg"]:
                 next_sell_idx = res["sell_idx"]
                 latest_sell_judge_res = res
-
-            mlflow.log_metrics(dict(
+            metric_dict = dict(
+                idx=idx,
                 total_return_amount=self.context.total_return_amount,
                 # this_return=this_return,
-                # balance=self.context.balance,
+                balance=self.context.balance,
                 # total_buy_count=self.context.total_buy_count,
                 # total_sell_count=self.context.total_sell_count,
                 # total_buy_amount=self.context.total_buy_amount,
                 # total_sell_amount=self.context.total_sell_amount,
-                now_price=ohlcv_data.loc[idx][bt_stng.price_col],
-            ), step=idx)
+                # now_price=ohlcv_data.loc[idx][bt_stng.price_col],
+            )
+            # mlflow.log_metrics(metric_dict, step=idx) # ここの記録をやめるだけで、6分→30秒になる...。なんということだ。
+            metric_list.append(metric_dict)
 
         # mlflow.log_figure(fig, "figure.png")
         # mlflow.log_param("k", list(range(2, 50)))
         # mlflow.log_metric("Silhouette Score", score, step=i)
 
-        mlflow.log_metrics(dict(
-            final_total_return=self.context.total_return_amount,
-            final_total_return_rate=self.context.total_return_amount / bt_stng.initial_balance,
-            period=(bt_stng.read_to_dt - bt_stng.start_dt).days,
-            total_win_count=len([1 for s in sell_res_list if s["sell_return"] >= 0]),
-            total_lose_count=len([1 for s in sell_res_list if s["sell_return"] < 0]),
-        ))
-
-        self._finish_mlflow()
-
-        return dict(
+        return_dict = dict(
+            ohlcv_data=ohlcv_data,
+            start_idx=start_idx,
             success_flg=success_flg,
             res_list=res_list,
             buy_res_list=buy_res_list,
-            sell_res_list=sell_res_list
+            sell_res_list=sell_res_list,
+            metric_list=metric_list,
         )
+
+        step_output_data = self._create_step_output_data(return_dict)
+        res_path = self._output_dataframe_to_csv_mflow(step_output_data, "step_output_data")
+
+        buy_order_output_data, statistic_dict = self._create_buy_order_output_data(return_dict)
+        res_path = self._output_dataframe_to_csv_mflow(buy_order_output_data, "buy_order_output_data")
+
+        final_win_count = step_output_data.iloc[-1]["win_count"]
+        final_buy_count = step_output_data.iloc[-1]["buy_count"]
+        final_win_rate = step_output_data.iloc[-1]["win_rate"]
+
+        sell_rtn_t_result = statistic_dict.pop("sell_rtn_t_result")
+        final_metric = dict(
+            final_total_return=self.context.total_return_amount,
+            final_total_return_rate=self.context.total_return_amount / bt_stng.initial_balance,
+            period=(bt_stng.read_to_dt - bt_stng.start_dt).days,
+            total_win_count=final_win_count,
+            final_buy_count=final_buy_count,
+            final_win_rate=final_win_rate,
+            **statistic_dict,
+        )
+        mlflow.log_metrics(final_metric)
+        mlflow.set_tag("sell_rtn_t_result", sell_rtn_t_result)
+
+        return_dict.update(dict(
+            final_metric=final_metric,
+            step_output_data=step_output_data,
+            buy_order_output_data=buy_order_output_data,
+        ))
+
+        self._finish_mlflow()
+        return return_dict
