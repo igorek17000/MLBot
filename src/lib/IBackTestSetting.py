@@ -95,3 +95,16 @@ class IBackTestSetting(metaclass=abc.ABCMeta):
             DataFrame: idxをインデックスとしたpd.DataFrame
         """
         raise NotImplementedError()
+
+    @abc.abstractmethod
+    def get_judge_evidence_plot_stng(self) -> dict:
+        """エビデンスのグラフ出力設定
+
+        Args:
+            total_fig_row_num (int) : サブプロットの行の数
+            evidence_setting (dict): バックテストのリターンと同様のdict
+
+        Raises:
+            DataFrame: idxをインデックスとしたpd.DataFrame
+        """
+        raise NotImplementedError()

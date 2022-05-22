@@ -1,7 +1,3 @@
-# %%
-import plotly.express as px
-from plotly.colors import qualitative
-import plotly.graph_objects as go
 from lib.context import Context
 from lib.backTest import BackTest
 from lib.IBackTestSetting import IBackTestSetting
@@ -10,11 +6,8 @@ import numpy as np
 from pandas import DataFrame
 from datetime import date
 
-# %%
 # import os
 # os.chdir('src')
-
-# %%
 
 
 class GoaldenCrossBackTestSetting(IBackTestSetting):
@@ -161,6 +154,22 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
         evidence_list = [dict(idx=r["idx"], **r["evidence"]) for r in judge_res_list]
         return pd.DataFrame(evidence_list).set_index('idx')
 
+    def get_judge_evidence_plot_stng(self) -> dict:
+        """移動平均のグラフを出力
+
+        ～～以下、インターフェース同様～～
+        """
+        total_fig_row_num = 4
+        evidence_setting = [
+            dict(
+                fig_row_num=1,
+                type='line',
+                cols=['td_long_ma', 'td_short_ma']
+            )
+        ]
+
+        return total_fig_row_num, evidence_setting
+
 
 bt_stng = GoaldenCrossBackTestSetting(
 
@@ -187,9 +196,3 @@ res = bktest.run_backtest()
 # pd.DataFrame(buy_res_list).to_csv('buy_res_list.csv')
 # pd.DataFrame(sell_res_list).to_csv('sell_res_list.csv')
 # print(bktest.context.buy_status)
-
-
-# step_output_data = res["step_output_data"]
-# buy_order_output_data = res["buy_order_output_data"]
-
-# step_output_data = step_output_data.assign(idx=step_output_data.index)

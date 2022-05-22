@@ -6,7 +6,7 @@ from mlflow.entities import Experiment, Run
 from numpy import float64
 from pandas import DataFrame
 from scipy import stats
-from lib import util
+from lib import util, plot
 from lib.context import Context
 from lib.IBackTestSetting import IBackTestSetting
 import pandas as pd
@@ -268,7 +268,7 @@ class BackTest:
         # 出力指標
         metric = (
             pd.DataFrame(metric_list)
-            .loc[:, ["idx", "total_return_amount"]]
+            .loc[:, ["idx", "total_return_amount", "balance"]]
             .set_index('idx')
         )
 
@@ -495,6 +495,9 @@ class BackTest:
             step_output_data=step_output_data,
             buy_order_output_data=buy_order_output_data,
         ))
+
+        step_fig = plot.create_step_backtest_results(return_dict, bt_stng)
+        mlflow.log_figure(step_fig, "step_fig.html")
 
         self._finish_mlflow()
         return return_dict
