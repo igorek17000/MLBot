@@ -6,25 +6,70 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 from typing import List
 import numpy as np
+from pandas import DataFrame
+import IBackTestSetting
 
 
-def create_line(data, x_axis, cols, hover_cols):
+def create_line(data: DataFrame, x_axis: str, cols: List[str], hover_cols: List[str]):
+    """線グラフの作成関数
+
+    Args:
+        data (DataFrame): dataフレーム
+        x_axis (str): X軸のカラム名
+        cols (List[str]): Y軸のカラム名のリスト（複数指定）
+        hover_cols (List[str]): ホバーラベルのカラム名のリスト（複数指定）
+
+    Returns:
+        _type_: plotlyの図オブジェクト
+    """
     return px.line(data, x=x_axis, y=cols, hover_data=hover_cols)
 
 
-def create_point(data, x_axis, cols, hover_cols):
+def create_point(data: DataFrame, x_axis: str, cols: List[str], hover_cols: List[str]):
+    """散布図グラフの作成関数
+
+    Args:
+        data (DataFrame): dataフレーム
+        x_axis (str): X軸のカラム名
+        cols (List[str]): Y軸のカラム名のリスト（複数指定）
+        hover_cols (List[str]): ホバーラベルのカラム名のリスト（複数指定）
+
+    Returns:
+        _type_: plotlyの図オブジェクト
+    """
     fig = px.scatter(data, x=x_axis, y=cols, hover_data=hover_cols,)
     fig.update_traces(marker=dict(size=20, symbol='diamond-tall'))
     return fig
 
 
-def create_bar(data, x_axis, cols, hover_cols):
+def create_bar(data: DataFrame, x_axis: str, cols: List[str], hover_cols: List[str]):
+    """棒グラフの作成関数
+
+    Args:
+        data (DataFrame): dataフレーム
+        x_axis (str): X軸のカラム名
+        cols (List[str]): Y軸のカラム名のリスト（複数指定）
+        hover_cols (List[str]): ホバーラベルのカラム名のリスト（複数指定）
+
+    Returns:
+        _type_: plotlyの図オブジェクト
+    """
     fig = px.bar(data, x=x_axis, y=cols, hover_data=hover_cols)
     fig.update_traces(marker_line_width=0)
     return fig
 
 
-def create_step_backtest_results(return_dict, bt_stng):
+def create_step_backtest_results(return_dict: dict, bt_stng: IBackTestSetting):
+    """バックテストの結果で、ステップごとの出力結果のグラフを作成する。
+
+    Args:
+        return_dict (dict): バックテストの最終的にreturnするdict
+        bt_stng (IBackTestSetting): バックテストの設定インスタンス
+
+    Returns:
+        _type_: plotlyの図
+    """
+
     res = return_dict
 
     step_output_data = res["step_output_data"]
