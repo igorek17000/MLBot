@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 from typing import List
 import numpy as np
 from pandas import DataFrame
-import IBackTestSetting
+from lib import IBackTestSetting
 
 
 def create_line(data: DataFrame, x_axis: str, cols: List[str], hover_cols: List[str]):
