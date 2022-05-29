@@ -21,7 +21,7 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
         dir_path: str, file_name: str,
         read_from_dt: date, read_to_dt: date, start_dt: date,
         initial_balance: int, price_col: str,
-        experiment_name: str = "MLBot",
+        experiment_name: str = "MLBot", mlflow_db_name: str = "mlflow_db",
         _long_ma_n: int = 25, _short_ma_n: int = 5,
         _sell_tilt_span: int = 1, _sell_tilt_threshold: float = 0.5,
         _buysell_timing: int = 1
@@ -36,6 +36,7 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
         """
 
         self.experiment_name = experiment_name
+        self.mlflow_db_name = mlflow_db_name
         self.rule_name = rule_name
         self.version = version
 
@@ -176,19 +177,7 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
         return total_fig_row_num, evidence_setting
 
 
-def GoaldenCrossBackTest(trial):
-
-    std_dict = dict(
-        _long_ma_n=trial.suggest_int("_long_ma_n", 1, 50),
-        _short_ma_n=trial.suggest_int("_short_ma_n", 5, 200),
-        _sell_tilt_span=trial.suggest_int("_sell_tilt_span", 1, 30),
-        _sell_tilt_threshold=trial.suggest_float("_sell_tilt_threshold", 0.01, 100),
-        _buysell_timing=1
-    )
-
-    if std_dict["_long_ma_n"] <= std_dict["_short_ma_n"]:
-        return (std_dict["_short_ma_n"] - std_dict["_long_ma_n"]) * (-100)
-
+def GoaldenCrossBackTest(std_dict):
     print(std_dict)
     bt_stng = GoaldenCrossBackTestSetting(
 
@@ -214,15 +203,32 @@ def GoaldenCrossBackTest(trial):
     return res["final_metric"]["sell_rtn_t_value"]
 
 
+def optuna_trial(trial):
+    std_dict = dict(
+        _long_ma_n=trial.suggest_int("_long_ma_n", 1, 50),
+        _short_ma_n=trial.suggest_int("_short_ma_n", 5, 200),
+        _sell_tilt_span=trial.suggest_int("_sell_tilt_span", 1, 30),
+        _sell_tilt_threshold=trial.suggest_float("_sell_tilt_threshold", 0.01, 100),
+        _buysell_timing=1
+    )
+
+    if std_dict["_long_ma_n"] <= std_dict["_short_ma_n"]:
+        return (std_dict["_short_ma_n"] - std_dict["_long_ma_n"]) * (-100)
+
+    return GoaldenCrossBackTest(std_dict)
+
+
 def oputuna_run(idx):
     print(idx)
+    study_name = "GoaldenCross"
+    oputuna_db_name = "oputuna_db"
     postgre_user = os.environ.get('MLFLOW_POSTGRE_USER')
     postgre_pass = os.environ.get('MLFLOW_POSTGRE_PASS')
     study = optuna.load_study(
-        study_name="GoaldenCross", storage=f"postgresql://{postgre_user}:{postgre_pass}@localhost/oputuna_db"
+        study_name=study_name, storage=f"postgresql://{postgre_user}:{postgre_pass}@localhost/{oputuna_db_name}"
     )
     # study = optuna.create_study(direction='maximize')
-    study.optimize(GoaldenCrossBackTest, n_trials=20)
+    study.optimize(optuna_trial, n_trials=3)
     print(study.best_params)
 
     return study.best_params
@@ -236,6 +242,6 @@ if __name__ == "__main__":
 
     with Pool(20) as p:
         result = p.map(oputuna_run, range(20))
-        
+
     # outputフォルダを削除
     shutil.rmtree(tmp_output_path)

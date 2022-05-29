@@ -46,6 +46,7 @@ class BackTest:
         """
         self.initial_balance = back_test_setting.initial_balance
         self.experiment_name = back_test_setting.experiment_name
+        self.mlflow_db_name = back_test_setting.mlflow_db_name
         self.rule_name = back_test_setting.rule_name
         self.version = back_test_setting.version
         self.context = Context(initial_balance=back_test_setting.initial_balance)
@@ -60,7 +61,7 @@ class BackTest:
         # mlflow.set_tracking_uri('../results/mlruns/')
         postgre_user = os.environ.get('MLFLOW_POSTGRE_USER')
         postgre_pass = os.environ.get('MLFLOW_POSTGRE_PASS')
-        mlflow.set_tracking_uri(f'postgresql://{postgre_user}:{postgre_pass}@localhost/mlflow_db')
+        mlflow.set_tracking_uri(f'postgresql://{postgre_user}:{postgre_pass}@localhost/{self.mlflow_db_name}')
         try:
             experiment_id = mlflow.create_experiment(
                 self.experiment_name, artifact_location="../results/mlruns")

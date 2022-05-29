@@ -10,7 +10,7 @@ class IBackTestSetting(metaclass=abc.ABCMeta):
         dir_path: str, file_name: str,
         read_from_dt: date, read_to_dt: date, start_dt: date,
         initial_balance: int, price_col: str,
-        experiment_name: str = "MLBot",
+        experiment_name: str = "MLBot", mlflow_db_name: str = "mlflow_db",
     ) -> None:
         """バックテスト設定のインターフェース
 
@@ -27,6 +27,7 @@ class IBackTestSetting(metaclass=abc.ABCMeta):
             experiment_name (str, optional): シミュレーションの実験名. Defaults to "MLBot".
         """
         self.experiment_name = experiment_name
+        self.mlflow_db_name = mlflow_db_name
         self.rule_name = rule_name
         self.version = version
 
