@@ -183,15 +183,18 @@ def GoaldenCrossBackTest(std_dict):
 
         rule_name="GoaldenCross",
         version="0.1",
+        # version="OtherPeriod",
         experiment_name="GoaldenCross",
 
         dir_path="../data/processing/bar/GMO/BTC/doll/threshold=300000000/bar/",
         file_name="process_bar.pkl",
         read_from_dt=date(2021, 1, 1),
+        # read_from_dt=date(2018, 10, 1),
         read_to_dt=date(2022, 5, 13),
 
         initial_balance=100000,
         start_dt=date(2021, 5, 1),
+        # start_dt=date(2019, 1, 1),
         price_col="close",
 
         **std_dict
@@ -242,6 +245,15 @@ if __name__ == "__main__":
 
     with Pool(20) as p:
         result = p.map(oputuna_run, range(20))
+
+    # std_dict = dict(
+    #     _long_ma_n=26,
+    #     _short_ma_n=5,
+    #     _sell_tilt_span=30,
+    #     _sell_tilt_threshold=4.9702008884991855,
+    #     _buysell_timing=1
+    # )
+    # res = GoaldenCrossBackTest(std_dict)
 
     # outputフォルダを削除
     shutil.rmtree(tmp_output_path)
