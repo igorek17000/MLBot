@@ -1,8 +1,12 @@
+from itertools import product
+from multiprocessing import Pool
 from lib.context import Context
 from lib.backTest import BackTest
 from lib.IBackTestSetting import IBackTestSetting
 import pandas as pd
 import numpy as np
+import shutil
+import os
 from pandas import DataFrame
 from datetime import date
 
@@ -171,28 +175,68 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
         return total_fig_row_num, evidence_setting
 
 
-bt_stng = GoaldenCrossBackTestSetting(
+def GoaldenCrossBackTest(std_dict):
+    print(std_dict)
+    bt_stng = GoaldenCrossBackTestSetting(
 
-    rule_name="GoaldenCross",
-    version="0.1",
+        rule_name="GoaldenCross",
+        version="0.1",
+        experiment_name="GoaldenCrossTest2",
 
-    dir_path="../data/processing/bar/GMO/BTC/doll/threshold=300000000/bar/",
-    file_name="process_bar.pkl",
-    read_from_dt=date(2021, 1, 1),
-    read_to_dt=date(2022, 5, 13),
+        dir_path="../data/processing/bar/GMO/BTC/doll/threshold=300000000/bar/",
+        file_name="process_bar.pkl",
+        read_from_dt=date(2021, 1, 1),
+        read_to_dt=date(2022, 5, 13),
 
-    initial_balance=100000,
-    start_dt=date(2021, 5, 1),
-    price_col="close",
-)
+        initial_balance=100000,
+        start_dt=date(2021, 5, 1),
+        price_col="close",
+
+        **std_dict
+    )
+
+    bktest = BackTest(back_test_setting=bt_stng)
+    res = bktest.run_backtest()
+
+    return True
 
 
-bktest = BackTest(back_test_setting=bt_stng)
-res = bktest.run_backtest()
+if __name__ == "__main__":
+    # _long_ma_n_list = [25, 30, 50, 80, 100]
+    # _short_ma_n_list = [3, 5, 8, 10, 15]
+    # _sell_tilt_span_list = [1, 2, 4]
+    # _sell_tilt_threshold_list = [0.5, 0.1, 1, 10, 100]
+    # _buysell_timing_list = [1]
 
-# 結果出力
-# buy_res_list = res["buy_res_list"]
-# sell_res_list = res["sell_res_list"]
-# pd.DataFrame(buy_res_list).to_csv('buy_res_list.csv')
-# pd.DataFrame(sell_res_list).to_csv('sell_res_list.csv')
-# print(bktest.context.buy_status)
+    _long_ma_n_list = [50]
+    _short_ma_n_list = [10]
+    _sell_tilt_span_list = [2]
+    _sell_tilt_threshold_list = [1]
+    _buysell_timing_list = [1]
+
+    std_dict_list = [
+        dict(
+            _long_ma_n=lman, _short_ma_n=sman,
+            _sell_tilt_span=sts, _sell_tilt_threshold=stt,
+            _buysell_timing=bt
+        )
+        for lman, sman, sts, stt, bt in product(
+            _long_ma_n_list, _short_ma_n_list,
+            _sell_tilt_span_list, _sell_tilt_threshold_list,
+            _buysell_timing_list
+        )
+    ]
+    print(len(std_dict_list))
+
+    tmp_output_path = '../results/output/'
+    if not os.path.exists(tmp_output_path):
+        os.mkdir(tmp_output_path)
+
+    # GoaldenCrossBackTest(std_dict_list[0])
+
+    with Pool(20) as p:
+        result = p.map(GoaldenCrossBackTest, std_dict_list)
+        print(result)
+
+    # outputフォルダを削除
+    shutil.rmtree(tmp_output_path)

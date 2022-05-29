@@ -12,6 +12,7 @@ from lib.IBackTestSetting import IBackTestSetting
 import pandas as pd
 import numpy as np
 import mlflow
+import os
 
 # # 設定
 
@@ -56,7 +57,15 @@ class BackTest:
         Returns:
             Tuple[Experiment, Run]
         """
-        mlflow.set_tracking_uri('../results/mlruns/')
+        # mlflow.set_tracking_uri('../results/mlruns/')
+        postgre_user = os.environ.get('MLFLOW_POSTGRE_USER')
+        postgre_pass = os.environ.get('MLFLOW_POSTGRE_PASS')
+        mlflow.set_tracking_uri(f'postgresql://{postgre_user}:{postgre_pass}@localhost/mlflow_db')
+        try:
+            experiment_id = mlflow.create_experiment(
+                self.experiment_name, artifact_location="../results/mlruns")
+        except mlflow.exceptions.MlflowException as e:
+            pass
         mlflow.set_experiment(self.experiment_name)
         experiment = mlflow.get_experiment_by_name(self.experiment_name)
 
@@ -112,7 +121,7 @@ class BackTest:
         amount = volume * price
 
         buy_success_flg = False
-        if (context.balance - amount) >= 0:
+        if (context.balance - amount) >= 0 and (amount > 0):
             context.buy_status.append(
                 Order(type="Buy", idx=now_idx, volume=volume, price=price)
             )
@@ -339,7 +348,7 @@ class BackTest:
         shape_ratio = return_rate_mean / return_rate_std  # 無リスク資産の収益率は0とする。
 
         sell_return_list = buy_res_joined["sell_return"].to_numpy()
-        sell_return_mean = np.mean(sell_return_list)  # 期待値
+        sell_return_mean = np.mean(sell_return_list)   # 期待値
         sell_return_std = np.std(sell_return_list, ddof=1)  # 不偏標準偏差
 
         # 帰無仮説　リターンの期待値は、0よりも小さい
@@ -348,7 +357,9 @@ class BackTest:
         p_value = t_res.pvalue
 
         t_result = None
-        if p_value <= 0.005:
+        if t_value < 0:
+            t_result = "有意でない"
+        elif p_value <= 0.005:
             t_result = "0.5%有意"
         elif p_value <= 0.01:
             t_result = "1%有意"
@@ -358,14 +369,14 @@ class BackTest:
             t_result = "有意でない"
 
         return buy_res_joined, dict(
-            sell_rtn_mean=sell_return_mean,
-            sell_rtn_std=sell_return_std,
+            sell_rtn_mean=float(sell_return_mean),
+            sell_rtn_std=float(sell_return_std),
             sell_rtn_t_value=t_value,
             sell_rtn_p_value=p_value,
             sell_rtn_t_result=t_result,
-            return_rate_mean=return_rate_mean,
-            return_rate_std=return_rate_std,
-            shape_ratio=shape_ratio
+            return_rate_mean=float(return_rate_mean),
+            return_rate_std=float(return_rate_std),
+            shape_ratio=float(shape_ratio)
         )
 
     def run_backtest(self) -> dict:
@@ -383,6 +394,7 @@ class BackTest:
         # 設定
         bt_stng = self.back_test_setting
         experiment, run = self._start_mlflow()
+        run_id = run.info.run_id
         mlflow.log_params(bt_stng.get_mlflow_params())
 
         # データ読み込み
@@ -468,10 +480,10 @@ class BackTest:
         )
 
         step_output_data = self._create_step_output_data(return_dict)
-        res_path = self._output_dataframe_to_csv_mflow(step_output_data, "step_output_data")
+        res_path = self._output_dataframe_to_csv_mflow(step_output_data, f"step_output_data_run_id_{run_id}")
 
         buy_order_output_data, statistic_dict = self._create_buy_order_output_data(return_dict)
-        res_path = self._output_dataframe_to_csv_mflow(buy_order_output_data, "buy_order_output_data")
+        res_path = self._output_dataframe_to_csv_mflow(buy_order_output_data, f"buy_order_output_data_{run_id}")
 
         final_win_count = step_output_data.iloc[-1]["win_count"]
         final_buy_count = step_output_data.iloc[-1]["buy_count"]
@@ -482,9 +494,9 @@ class BackTest:
             final_total_return=self.context.total_return_amount,
             final_total_return_rate=self.context.total_return_amount / bt_stng.initial_balance,
             period=(bt_stng.read_to_dt - bt_stng.start_dt).days,
-            total_win_count=final_win_count,
-            final_buy_count=final_buy_count,
-            final_win_rate=final_win_rate,
+            total_win_count=int(final_win_count),
+            final_buy_count=int(final_buy_count),
+            final_win_rate=float(final_win_rate),
             **statistic_dict,
         )
         mlflow.log_metrics(final_metric)
