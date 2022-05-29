@@ -340,6 +340,7 @@ class BackTest:
             buy_res
             .join(sell_res, how='left')
             .assign(retur_rate=lambda x: (x.sell_amount / x.buy_amount) - 1)
+            .dropna(subset=["sell_amount"])
         )
 
         return_rate_list = buy_res_joined["retur_rate"].to_numpy()
@@ -352,7 +353,7 @@ class BackTest:
         sell_return_std = np.std(sell_return_list, ddof=1)  # 不偏標準偏差
 
         # 帰無仮説　リターンの期待値は、0よりも小さい
-        t_res = stats.ttest_1samp(sell_return_list, 0.0, alternative="less")
+        t_res = stats.ttest_1samp(sell_return_list, 0.0, alternative="greater")
         t_value = t_res.statistic
         p_value = t_res.pvalue
 

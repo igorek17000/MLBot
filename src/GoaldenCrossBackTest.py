@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import shutil
 import os
+import optuna
 from pandas import DataFrame
 from datetime import date
 
@@ -175,13 +176,25 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
         return total_fig_row_num, evidence_setting
 
 
-def GoaldenCrossBackTest(std_dict):
+def GoaldenCrossBackTest(trial):
+
+    std_dict = dict(
+        _long_ma_n=trial.suggest_int("_long_ma_n", 1, 50),
+        _short_ma_n=trial.suggest_int("_short_ma_n", 5, 200),
+        _sell_tilt_span=trial.suggest_int("_sell_tilt_span", 1, 30),
+        _sell_tilt_threshold=trial.suggest_float("_sell_tilt_threshold", 0.01, 100),
+        _buysell_timing=1
+    )
+
+    if std_dict["_long_ma_n"] <= std_dict["_short_ma_n"]:
+        return (std_dict["_short_ma_n"] - std_dict["_long_ma_n"]) * (-100)
+
     print(std_dict)
     bt_stng = GoaldenCrossBackTestSetting(
 
         rule_name="GoaldenCross",
         version="0.1",
-        experiment_name="GoaldenCrossTest2",
+        experiment_name="GoaldenCross",
 
         dir_path="../data/processing/bar/GMO/BTC/doll/threshold=300000000/bar/",
         file_name="process_bar.pkl",
@@ -198,45 +211,31 @@ def GoaldenCrossBackTest(std_dict):
     bktest = BackTest(back_test_setting=bt_stng)
     res = bktest.run_backtest()
 
-    return True
+    return res["final_metric"]["sell_rtn_t_value"]
+
+
+def oputuna_run(idx):
+    print(idx)
+    postgre_user = os.environ.get('MLFLOW_POSTGRE_USER')
+    postgre_pass = os.environ.get('MLFLOW_POSTGRE_PASS')
+    study = optuna.load_study(
+        study_name="GoaldenCross", storage=f"postgresql://{postgre_user}:{postgre_pass}@localhost/oputuna_db"
+    )
+    # study = optuna.create_study(direction='maximize')
+    study.optimize(GoaldenCrossBackTest, n_trials=20)
+    print(study.best_params)
+
+    return study.best_params
 
 
 if __name__ == "__main__":
-    # _long_ma_n_list = [25, 30, 50, 80, 100]
-    # _short_ma_n_list = [3, 5, 8, 10, 15]
-    # _sell_tilt_span_list = [1, 2, 4]
-    # _sell_tilt_threshold_list = [0.5, 0.1, 1, 10, 100]
-    # _buysell_timing_list = [1]
-
-    _long_ma_n_list = [50]
-    _short_ma_n_list = [10]
-    _sell_tilt_span_list = [2]
-    _sell_tilt_threshold_list = [1]
-    _buysell_timing_list = [1]
-
-    std_dict_list = [
-        dict(
-            _long_ma_n=lman, _short_ma_n=sman,
-            _sell_tilt_span=sts, _sell_tilt_threshold=stt,
-            _buysell_timing=bt
-        )
-        for lman, sman, sts, stt, bt in product(
-            _long_ma_n_list, _short_ma_n_list,
-            _sell_tilt_span_list, _sell_tilt_threshold_list,
-            _buysell_timing_list
-        )
-    ]
-    print(len(std_dict_list))
 
     tmp_output_path = '../results/output/'
     if not os.path.exists(tmp_output_path):
         os.mkdir(tmp_output_path)
 
-    # GoaldenCrossBackTest(std_dict_list[0])
-
     with Pool(20) as p:
-        result = p.map(GoaldenCrossBackTest, std_dict_list)
-        print(result)
-
+        result = p.map(oputuna_run, range(20))
+        
     # outputフォルダを削除
     shutil.rmtree(tmp_output_path)
