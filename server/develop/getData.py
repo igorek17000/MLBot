@@ -73,7 +73,7 @@ def getBitFlyerBack():
 
     res = doc_ref.get().to_dict()
     start_id = int(res["oldest_id"])
-    for i in range(20):
+    for i in range(15):
         pyaload = {"product_code": "BTC_JPY", "count": 500, "before": start_id}
 
         res_dict_list = requests.get(endpoint + "executions", params=pyaload).json()

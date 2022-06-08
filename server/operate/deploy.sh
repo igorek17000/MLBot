@@ -2,14 +2,16 @@
 PGM_NAME=getData.py
 FUNC_NAME=getRawDataBitFlyer
 METHOD_NAME=getData
-MEMORY=128MB
-
-cp ../develop/${PGM_NAME} ./main.py
-cp ../develop/requirements.txt ./requirements.txt
-cp ../develop/serviceAccount.json ./serviceAccount.json
-
+MEMORY=256MB
 
 gcloud pubsub topics create ${FUNC_NAME}
+
+
+cp ../develop/${PGM_NAME} ./${FUNC_NAME}/main.py
+cp ../develop/requirements.txt ./${FUNC_NAME}/requirements.txt
+cp ../develop/serviceAccount.json ./${FUNC_NAME}/serviceAccount.json
+
+cd ./${FUNC_NAME}/
 
 gcloud functions deploy ${FUNC_NAME} \
 --entry-point=${METHOD_NAME} \
