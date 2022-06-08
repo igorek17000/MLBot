@@ -19,10 +19,8 @@ def getBitFlyer():
     db = firestore.client()
     doc_ref = (
         db
-        .collection('MLBot')
-        .document('Exchanger')
-        .collection('bitFlyer')
-        .document('raw_data')
+        .collection('Exchanger')
+        .document('bitFlyer')
     )
 
     endpoint = "https://api.bitflyer.com/v1/"
@@ -45,20 +43,10 @@ def getBitFlyer():
         print(latest_id, latest_dt)
 
         for res_dict in res_dict_list:
-            row = doc_ref.collection(res_dict["exec_date"][:10].replace('-', '')).document(str(res_dict["id"]))
+            row = doc_ref.collection('raw_data').document(str(res_dict["id"]))
             row.set(res_dict)
 
         doc_ref.set({"latest_ymd": latest_dt, "latest_id": latest_id})
 
         start_id = latest_id
         sleep(0.8)
-
-    # 初期化用
-    # pyaload = {"product_code": "BTC_JPY", "count": 500}
-    # res = requests.get(endpoint + "executions", params=pyaload)
-    # res_dict = res.json()[0]
-
-    # row = doc_ref.collection(res_dict["exec_date"][:10].replace('-', '')).document(str(res_dict["id"]))
-    # row.set(res_dict)
-
-    # doc_ref.set({"latest_ymd": "20220607", "latest_id": "2344406142"})
