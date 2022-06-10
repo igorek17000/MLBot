@@ -18,8 +18,9 @@ def getDataBack(event, context):
 
 
 def getBitFlyer():
-    cred = credentials.Certificate('./serviceAccount.json')
-    firebase_admin.initialize_app(cred)
+    if not firebase_admin._apps:
+        cred = credentials.Certificate('./serviceAccount.json')
+        firebase_admin.initialize_app(cred)
 
     db = firestore.client()
     doc_ref = (
@@ -39,7 +40,6 @@ def getBitFlyer():
         # dir(res)
 
         if len(res_dict_list) == 0:
-            warn("過去訴求は限界")
             break
 
         new_start_dict = res_dict_list[0]
@@ -59,8 +59,9 @@ def getBitFlyer():
 
 
 def getBitFlyerBack():
-    cred = credentials.Certificate('./serviceAccount.json')
-    firebase_admin.initialize_app(cred)
+    if not firebase_admin._apps:
+        cred = credentials.Certificate('./serviceAccount.json')
+        firebase_admin.initialize_app(cred)
 
     db = firestore.client()
     doc_ref = (
@@ -80,6 +81,7 @@ def getBitFlyerBack():
         # dir(res)
 
         if len(res_dict_list) == 0:
+            warn("過去訴求は限界")
             break
 
         new_start_dict = res_dict_list[-1]
