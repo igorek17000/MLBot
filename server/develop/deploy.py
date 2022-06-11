@@ -9,6 +9,8 @@ import sys
 args = sys.argv
 FUNC_NAME = args[1]
 METHOD_NAME = args[2]
+CREATE_PPUBSUB = False
+CREATE_JOB = False
 
 # FUNC_NAME = "getRawDataBitFlyer"
 # METHOD_NAME = "getData"
@@ -16,15 +18,19 @@ METHOD_NAME = args[2]
 # FUNC_NAME = "getRawDataBitFlyerBack"
 # METHOD_NAME = "getDataBack"
 
-PGM_NAME = "getData.py"
+# FUNC_NAME = "processingDataBitFlyerDoll300M"
+# METHOD_NAME = "makeBar"
+# CREATE_PPUBSUB = True
+# CREATE_JOB = True
+
+PGM_NAME = "processingData.py"
 DIR = "server/develop"
 MEMORY = "256MB"
-CREATE_PPUBSUB = False
-CREATE_JOB = False
-SCHEDULE = "0 */3 * * *"
+SCHEDULE = "*/13 * * * *"
 
 
 os.chdir(DIR)
+print(os.getcwd())
 if CREATE_PPUBSUB:
     cmd = [
         "gcloud", "pubsub", "topics",
@@ -40,6 +46,7 @@ shutil.copy2("requirements.txt", "../operate/{}/requirements.txt".format(FUNC_NA
 shutil.copy2("serviceAccount.json", "../operate/{}/serviceAccount.json".format(FUNC_NAME))
 
 os.chdir(f"../operate/{FUNC_NAME}/")
+print(os.getcwd())
 
 cmd = [
     "gcloud", "functions", "deploy", FUNC_NAME,
@@ -57,7 +64,7 @@ if CREATE_JOB:
     cmd = [
         "gcloud", "scheduler", "jobs", "create", "pubsub", FUNC_NAME,
         f'--schedule={SCHEDULE}',
-        f"--topic=cron-topic",
-        f'--message-body="{FUNC_NAME}"'
+        f"--topic={FUNC_NAME}",
+        f'--message-body="{FUNC_NAME}"',
     ]
     cp = subprocess.run(cmd, encoding='utf-8', stdout=subprocess.PIPE)
