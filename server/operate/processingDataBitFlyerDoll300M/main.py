@@ -16,7 +16,7 @@ def make_doll_bar(
         target_rows: List[dict], threshold: int,
         price_col_name: str, volume_col_name: str,
         timestamp_col_name: str, timestmap_format: str,
-        idx_col_name: str, latest_pricessed_row: dict) -> bool:
+        idx_col_name: str, latest_pricessed_row: dict = None) -> bool:
     """ドルバーを作成する関数。
 
     Args:
@@ -28,8 +28,12 @@ def make_doll_bar(
     """
 
     print("■ ohlcv形式でバーを作成")
-    sum_sum_price = latest_pricessed_row["left_price"]
-    sum_volume = latest_pricessed_row["left_volumne"]
+    if latest_pricessed_row is None:
+        sum_sum_price = 0
+        sum_volume = 0
+    else:
+        sum_sum_price = latest_pricessed_row["left_price"]
+        sum_volume = latest_pricessed_row["left_volumne"]
     open_price = target_rows[0][price_col_name]
     min_price = open_price
     max_price = open_price
@@ -94,7 +98,7 @@ def make_doll_bar(
 
 def make_bitflyer_doll_bar():
 
-    INTERVAL = 2000
+    INTERVAL = 10000
     THRESHOLD = 300000000
     COLLECTION_NAME = f'processing_doll_bar_{THRESHOLD}'
 
@@ -113,6 +117,8 @@ def make_bitflyer_doll_bar():
 
     start_id = int(res["processing_latest_id"])
     target_rows = [d.to_dict() for d in doc_ref.collection('raw_data').where("id", ">=", start_id).order_by('id').limit(INTERVAL).get()]
+
+    # 初期化時は下記コメントアウト
     latest_pricessed_row = [d.to_dict() for d in doc_ref.collection(COLLECTION_NAME).order_by(
         'end_id', direction=firestore.Query.DESCENDING).limit(1).get()][0]
 
@@ -133,6 +139,8 @@ def make_bitflyer_doll_bar():
         timestamp_col_name="exec_date",
         timestmap_format='%Y-%m-%dT%H:%M:%S.%f',
         idx_col_name="id",
+
+        # 初期化時は下記コメントアウト
         latest_pricessed_row=latest_pricessed_row
     )
 

@@ -5,10 +5,12 @@ import sys
 
 # python3 server/develop/deploy.py getRawDataBitFlyer getData
 # python3 server/develop/deploy.py getRawDataBitFlyerBack getDataBack
+# python3 server/develop/deploy.py processingDataBitFlyerDoll300M makeBar processingData.py
 
 args = sys.argv
 FUNC_NAME = args[1]
 METHOD_NAME = args[2]
+PGM_NAME = args[3]
 CREATE_PPUBSUB = False
 CREATE_JOB = False
 
@@ -18,12 +20,11 @@ CREATE_JOB = False
 # FUNC_NAME = "getRawDataBitFlyerBack"
 # METHOD_NAME = "getDataBack"
 
-# FUNC_NAME = "processingDataBitFlyerDoll300M"
-# METHOD_NAME = "makeBar"
-# CREATE_PPUBSUB = True
-# CREATE_JOB = True
-
 PGM_NAME = "processingData.py"
+FUNC_NAME = "processingDataBitFlyerDoll300M"
+METHOD_NAME = "makeBar"
+
+
 DIR = "server/develop"
 MEMORY = "256MB"
 SCHEDULE = "*/13 * * * *"

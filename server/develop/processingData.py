@@ -98,7 +98,7 @@ def make_doll_bar(
 
 def make_bitflyer_doll_bar():
 
-    INTERVAL = 2000
+    INTERVAL = 10000
     THRESHOLD = 300000000
     COLLECTION_NAME = f'processing_doll_bar_{THRESHOLD}'
 
