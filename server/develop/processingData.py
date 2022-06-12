@@ -9,7 +9,9 @@ from typing import List
 
 
 def makeBar(event, context):
-    make_bitflyer_doll_bar()
+    make_bitflyer_doll_bar(
+        THRESHOLD=300000000
+    )
 
 
 def make_doll_bar(
@@ -96,10 +98,8 @@ def make_doll_bar(
     return bar_list
 
 
-def make_bitflyer_doll_bar():
+def make_bitflyer_doll_bar(THRESHOLD):
 
-    INTERVAL = 10000
-    THRESHOLD = 300000000
     COLLECTION_NAME = f'processing_doll_bar_{THRESHOLD}'
 
     if not firebase_admin._apps:
@@ -116,7 +116,7 @@ def make_bitflyer_doll_bar():
     res = doc_ref.get().to_dict()
 
     start_id = int(res["processing_latest_id"])
-    target_rows = [d.to_dict() for d in doc_ref.collection('raw_data').where("id", ">=", start_id).order_by('id').limit(INTERVAL).get()]
+    target_rows = [d.to_dict() for d in doc_ref.collection('raw_data').where("id", ">=", start_id).get()]
 
     # 初期化時は下記コメントアウト
     latest_pricessed_row = [d.to_dict() for d in doc_ref.collection(COLLECTION_NAME).order_by(
