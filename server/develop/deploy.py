@@ -20,10 +20,14 @@ CREATE_JOB = False
 # FUNC_NAME = "getRawDataBitFlyerBack"
 # METHOD_NAME = "getDataBack"
 
-PGM_NAME = "processingData.py"
-FUNC_NAME = "processingDataBitFlyerDoll300M"
-METHOD_NAME = "makeBar"
+# PGM_NAME = "processingData.py"
+# FUNC_NAME = "processingDataBitFlyerDoll300M"
+# METHOD_NAME = "makeBar"
 
+# PGM_NAME = "realtimeTrade.py"
+# REQUIREMENTS_NAME = "requirements_judge.txt"
+# FUNC_NAME = "realtimeTradeBitFlyerDoll300M"
+# METHOD_NAME = "trade"
 
 DIR = "server/develop"
 MEMORY = "256MB"
@@ -43,7 +47,7 @@ if not os.path.exists(f"../operate/{FUNC_NAME}"):
     os.makedirs(f"../operate/{FUNC_NAME}")
 
 shutil.copy2(PGM_NAME, "../operate/{}/main.py".format(FUNC_NAME))
-shutil.copy2("requirements.txt", "../operate/{}/requirements.txt".format(FUNC_NAME))
+shutil.copy2(REQUIREMENTS_NAME, "../operate/{}/requirements.txt".format(FUNC_NAME))
 shutil.copy2("serviceAccount.json", "../operate/{}/serviceAccount.json".format(FUNC_NAME))
 
 os.chdir(f"../operate/{FUNC_NAME}/")
