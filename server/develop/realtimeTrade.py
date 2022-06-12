@@ -89,7 +89,7 @@ def judgeGoaldenCrossBitFlyer():
 
     # 既に判定済みであればスキップする。
     rule_doc = doc_ref.collection('trade_rule').document(RULE_NAME).get().to_dict()
-    if rule_doc["judge_latest_id"] == bar_list["end_id"]:
+    if rule_doc["judge_latest_id"] == bar_list[-1]["end_id"]:
         return True
 
     tg_df = DataFrame(bar_list)
@@ -103,7 +103,7 @@ def judgeGoaldenCrossBitFlyer():
     yd_long_ma = _calc_ma_now(now_idx-1, LONG_MA_N, tg_df, PRICE_COL)
     yd_short_ma = _calc_ma_now(now_idx-1, SHORT_MA_N, tg_df, PRICE_COL)
 
-    price = bar_list[now_idx][PRICE_COL]  # NOTE 実際のリアルタイムの価格に変更
+    price = bar_list[-1][PRICE_COL]  # NOTE 実際のリアルタイムの価格に変更
 
     trade_flg = False
 
@@ -120,15 +120,15 @@ def judgeGoaldenCrossBitFlyer():
             .collection('trade_rule')
             .document(RULE_NAME)
             .collection("buy_list")
-            .document(str(bar_list[now_idx]['end_id']))
+            .document(str(bar_list[-1]['end_id']))
         )
 
         buy_dict = {
             "status": "Buy",
-            "end_id": bar_list[now_idx]['end_id'],
+            "end_id": bar_list[-1]['end_id'],
             "buy_volume": buy_volume,
             "buy_price": price,
-            "buy_timestamp": bar_list[now_idx]['timestamp'],
+            "buy_timestamp": bar_list[-1]['timestamp'],
             "buy_amount": buy_volume * (1-RISK) * price
         }
 
@@ -173,7 +173,7 @@ def judgeGoaldenCrossBitFlyer():
                     "sell_price": price,
                     "sell_timestamp": datetime.now()
                 }
-                price(sell_dict)
+                print(sell_dict)
                 sell_doc.update(sell_dict)
             trade_flg = True
 
