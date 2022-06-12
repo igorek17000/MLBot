@@ -125,8 +125,8 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
         buy_volume = 0
         sell_order_list = []
 
-        # N-1 時点では long > short & N 時点では long <= short となり、上に抜いたら買うタイミング
-        if (yd_long_ma > yd_short_ma) & (td_long_ma <= td_short_ma):
+        # N-1 時点では long >= short & N 時点では long < short となり、上に抜いたら買うタイミング
+        if (yd_long_ma >= yd_short_ma) & (td_long_ma < td_short_ma):
             buy_flg = True
             buy_idx = now_idx + self._buysell_timing
 
@@ -134,13 +134,10 @@ class GoaldenCrossBackTestSetting(IBackTestSetting):
             buy_volume = ((context.balance - 5000) / ohlcv_data.iloc[now_idx][self.price_col]) * 1000
             buy_volume = np.floor(buy_volume) / 1000
 
-        # shortの傾きが一定値以下になったら売り
+        # N-1 時点では long <= short & N 時点では long > short となり、下に抜いたら買うタイミング
         elif len(context.buy_status) > 0:
 
-            base_short_ma = self._calc_ma_now(now_idx - self._sell_tilt_span, self._short_ma_n, tg_df, self.price_col)
-            sell_tilt = (td_short_ma - base_short_ma) / self._sell_tilt_span
-
-            if sell_tilt <= self._sell_tilt_threshold:
+            if (yd_long_ma <= yd_short_ma) & (td_long_ma > td_short_ma):
                 sell_flg = True
                 sell_idx = now_idx + self._buysell_timing
                 sell_order_list = [context.buy_status[-1]]
@@ -183,40 +180,39 @@ def GoaldenCrossBackTest(std_dict):
     print(std_dict)
     bt_stng = GoaldenCrossBackTestSetting(
 
-        rule_name="GoaldenCross",
-        # version="0.1",
-        version="BitFlyer",
-        experiment_name="GoaldenCross",
+        rule_name="GoaldenCrossKai",
+        version="0.1",
+        # version="BitFlyer",
+        experiment_name="GoaldenCrossKai",
 
-        # dir_path="../data/processing/bar/GMO/BTC/doll/threshold=300000000/bar/",
-        dir_path="../data/processing/bar/bitFlyer/BTC/doll/threshold=300000000/bar/",
+        dir_path="../data/processing/bar/GMO/BTC/doll/threshold=300000000/bar/",
+        # dir_path="../data/processing/bar/bitFlyer/BTC/doll/threshold=300000000/bar/",
         file_name="process_bar.pkl",
-        read_from_dt=date(2022, 5, 11),
+        read_from_dt=date(2021, 5, 1),
         # read_from_dt=date(2018, 10, 1),
-        read_to_dt=date(2022, 6, 12),
+        read_to_dt=date(2022, 6, 11),
 
         initial_balance=100000,
-        start_dt=date(2022, 5, 20),
+        start_dt=date(2021, 6, 1),
         # start_dt=date(2019, 1, 1),
         price_col="close",
-
         risk=0.05 * 0.01,
 
-        ** std_dict
+        **std_dict
     )
 
     bktest = BackTest(back_test_setting=bt_stng)
     res = bktest.run_backtest()
 
-    return 1 / res["final_metric"]["sell_rtn_p_value"]
+    return res["final_metric"]["sell_rtn_t_value"]
 
 
 def optuna_trial(trial):
     std_dict = dict(
-        _long_ma_n=trial.suggest_int("_long_ma_n", 5, 50),
-        _short_ma_n=trial.suggest_int("_short_ma_n", 1, 50),
-        _sell_tilt_span=trial.suggest_int("_sell_tilt_span", 1, 30),
-        _sell_tilt_threshold=trial.suggest_float("_sell_tilt_threshold", 0.001, 100),
+        _long_ma_n=trial.suggest_int("_long_ma_n", 3, 200),
+        _short_ma_n=trial.suggest_int("_short_ma_n", 1, 200),
+        _sell_tilt_span=1,
+        _sell_tilt_threshold=1,
         _buysell_timing=1
     )
 
@@ -228,7 +224,7 @@ def optuna_trial(trial):
 
 def oputuna_run(idx):
     print(idx)
-    study_name = "GoaldenCrossBTFpmax"
+    study_name = "GoaldenCrossKai"
     oputuna_db_name = "oputuna_db"
     postgre_user = os.environ.get('MLFLOW_POSTGRE_USER')
     postgre_pass = os.environ.get('MLFLOW_POSTGRE_PASS')
@@ -248,8 +244,8 @@ if __name__ == "__main__":
     if not os.path.exists(tmp_output_path):
         os.mkdir(tmp_output_path)
 
-    with Pool(10) as p:
-        result = p.map(oputuna_run, range(200))
+    with Pool(20) as p:
+        result = p.map(oputuna_run, range(400))
 
     # std_dict = dict(
     #     _long_ma_n=26,

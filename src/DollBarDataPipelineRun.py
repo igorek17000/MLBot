@@ -11,8 +11,8 @@ from datetime import date, datetime
 
 
 # GMO
-from_dt = date(2018, 9, 5)
-to_dt = date(2022, 5, 30)
+from_dt = date(2022, 5, 13)
+to_dt = date(2022, 6, 30)
 MARKET = "BTC"
 DL_STITE = "GMO"
 

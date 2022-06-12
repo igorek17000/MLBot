@@ -99,7 +99,7 @@ class BackTest:
         """
         mlflow.end_run()
 
-    def _buy(self, context: Context, now_idx: int, volume: float64, price: float64) -> dict:
+    def _buy(self, context: Context, now_idx: int, volume: float64, price: float64, risk: float64) -> dict:
         """買う関数
 
         Args:
@@ -107,6 +107,7 @@ class BackTest:
             now_idx (int): 現時点のidx
             volume (float64): 買うボリューム
             price (float64): 現時点の価格
+            risk (float64):手数料や他リスク。1% は0.01
 
         Returns:
             dict: 購買結果
@@ -120,11 +121,12 @@ class BackTest:
             )
         """
         amount = volume * price
+        risk_volume = volume * (1 - risk)
 
         buy_success_flg = False
         if (context.balance - amount) >= 0 and (amount > 0):
             context.buy_status.append(
-                Order(type="Buy", idx=now_idx, volume=volume, price=price)
+                Order(type="Buy", idx=now_idx, volume=risk_volume, price=price)
             )
             context.balance -= amount
             context.total_buy_count += 1
@@ -136,13 +138,13 @@ class BackTest:
             buy_success_flg=buy_success_flg,
             amount=amount,
             buy_price=price,
-            buy_volume=volume,
+            buy_volume=risk_volume,
             balance=context.balance,
             total_buy_count=context.total_buy_count,
             total_buy_amount=context.total_buy_amount,
         )
 
-    def _sell(self, context: Context, now_idx: int, sell_order_list: List[Order], price: float64) -> List[dict]:
+    def _sell(self, context: Context, now_idx: int, sell_order_list: List[Order], price: float64, risk: float64) -> List[dict]:
         """売る関数
 
         Args:
@@ -150,6 +152,7 @@ class BackTest:
             now_idx (int): 現時点のインデックス
             sell_order_list (List[Order]): 売りたいオーダーのリスト
             price (float64): 現時点の価格
+            risk (float64):手数料や他リスク。1% は0.01
 
         Returns:
             List[dict]: 売った結果のリスト
@@ -175,7 +178,10 @@ class BackTest:
 
             latest_buy = sell_order
             buy_idx = latest_buy.idx
-            amount = latest_buy.volume * price
+
+            risk_volume = latest_buy.volume * (1-risk)
+
+            amount = risk_volume * price
             sell_return = amount - latest_buy.amount
 
             context.balance += amount
@@ -191,7 +197,7 @@ class BackTest:
                     sell_success_flg=sell_success_flg,
                     amount=amount,
                     sell_price=price,
-                    sell_volume=latest_buy.volume,
+                    sell_volume=risk_volume,
                     sell_return=sell_return,
                     balance=context.balance,
                     total_sell_count=context.total_sell_count,
@@ -423,7 +429,8 @@ class BackTest:
                 buy_res = self._buy(
                     context=self.context, now_idx=idx,
                     volume=latest_buy_judge_res["buy_volume"],
-                    price=ohlcv_data.loc[idx][bt_stng.price_col]
+                    price=ohlcv_data.loc[idx][bt_stng.price_col],
+                    risk=bt_stng.risk
                 )
                 next_buy_idx = None
                 latest_buy_judge_res = None
@@ -434,7 +441,8 @@ class BackTest:
                 sell_res = self._sell(
                     context=self.context, now_idx=idx,
                     sell_order_list=latest_sell_judge_res["sell_order_list"],
-                    price=ohlcv_data.loc[idx][bt_stng.price_col]
+                    price=ohlcv_data.loc[idx][bt_stng.price_col],
+                    risk=bt_stng.risk
                 )
                 next_sell_idx = None
                 latest_sell_judge_res = None

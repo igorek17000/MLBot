@@ -10,6 +10,7 @@ class IBackTestSetting(metaclass=abc.ABCMeta):
         dir_path: str, file_name: str,
         read_from_dt: date, read_to_dt: date, start_dt: date,
         initial_balance: int, price_col: str,
+        risk: float,
         experiment_name: str = "MLBot", mlflow_db_name: str = "mlflow_db",
     ) -> None:
         """バックテスト設定のインターフェース
@@ -24,6 +25,7 @@ class IBackTestSetting(metaclass=abc.ABCMeta):
             start_dt (date): シミュレーション開始日付
             initial_balance (int): 初期所持金
             price_col (str): 価格に使用するカラム名
+            risk(float): 手数料や他リスク。1% は0.01
             experiment_name (str, optional): シミュレーションの実験名. Defaults to "MLBot".
         """
         self.experiment_name = experiment_name
@@ -39,6 +41,7 @@ class IBackTestSetting(metaclass=abc.ABCMeta):
         self.initial_balance = initial_balance
         self.start_dt = start_dt
         self.price_col = price_col
+        self.risk = risk
 
     @abc.abstractmethod
     def get_mlflow_params(self) -> dict:
