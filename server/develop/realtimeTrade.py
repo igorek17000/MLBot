@@ -87,7 +87,11 @@ def judgeGoaldenCrossBitFlyer():
         for row in target_rows
     ]
 
-    len(bar_list)
+    # 既に判定済みであればスキップする。
+    rule_doc = doc_ref.collection('trade_rule').document(RULE_NAME).get().to_dict()
+    if rule_doc["judge_latest_id"] == bar_list["end_id"]:
+        return True
+
     tg_df = DataFrame(bar_list)
     now_idx = LONG_MA_N
 
@@ -176,5 +180,9 @@ def judgeGoaldenCrossBitFlyer():
         if trade_flg:
             doc_ref.collection('trade_rule').document(RULE_NAME).update({
                 "trade_latest_id": bar_list[-1]["end_id"],
-                "trade_judge_timestamp": datetime.now()
+                "trade_timestamp": datetime.now()
             })
+    doc_ref.collection('trade_rule').document(RULE_NAME).update({
+        "judge_latest_id": bar_list[-1]["end_id"],
+        "trade_judge_timestamp": datetime.now()
+    })
