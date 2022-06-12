@@ -24,10 +24,13 @@ CREATE_JOB = False
 # FUNC_NAME = "processingDataBitFlyerDoll300M"
 # METHOD_NAME = "makeBar"
 
-# PGM_NAME = "realtimeTrade.py"
-# REQUIREMENTS_NAME = "requirements_judge.txt"
-# FUNC_NAME = "realtimeTradeBitFlyerDoll300M"
-# METHOD_NAME = "trade"
+PGM_NAME = "realtimeTrade.py"
+REQUIREMENTS_NAME = "requirements_judge.txt"
+FUNC_NAME = "realtimeTradeBitFlyerDoll300M"
+METHOD_NAME = "trade"
+TRRIGER_TYPE = "FireStore"
+RESOURCE_PATH = "Exchanger/bitFlyer/processing_doll_bar_300000000/{doc1}"
+
 
 DIR = "server/develop"
 MEMORY = "256MB"
@@ -53,15 +56,28 @@ shutil.copy2("serviceAccount.json", "../operate/{}/serviceAccount.json".format(F
 os.chdir(f"../operate/{FUNC_NAME}/")
 print(os.getcwd())
 
-cmd = [
-    "gcloud", "functions", "deploy", FUNC_NAME,
-    f"--entry-point={METHOD_NAME}",
-    f"--region=asia-northeast1",
-    f"--runtime=python38",
-    f"--memory={MEMORY}",
-    f"--trigger-topic={FUNC_NAME}",
-    f"--timeout=540",
-]
+if TRRIGER_TYPE == "PUBSUB":
+    cmd = [
+        "gcloud", "functions", "deploy", FUNC_NAME,
+        f"--entry-point={METHOD_NAME}",
+        f"--region=asia-northeast1",
+        f"--runtime=python38",
+        f"--memory={MEMORY}",
+        f"--trigger-topic={FUNC_NAME}",
+        f"--timeout=540",
+    ]
+elif TRRIGER_TYPE == "FireStore":
+    cmd = [
+        "gcloud", "functions", "deploy", FUNC_NAME,
+        f"--entry-point={METHOD_NAME}",
+        f"--region=asia-northeast1",
+        f"--runtime=python38",
+        f"--memory={MEMORY}",
+        # f"--trigger-topic={FUNC_NAME}",
+        f'--trigger-event=providers/cloud.firestore/eventTypes/document.create',
+        f'--trigger-resource=projects/mlbot-352401/databases/(default)/documents/{RESOURCE_PATH}',
+        f"--timeout=540",
+    ]
 cp = subprocess.run(cmd, encoding='utf-8', stdout=subprocess.PIPE)
 
 
