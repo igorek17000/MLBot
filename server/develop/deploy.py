@@ -77,7 +77,7 @@ elif TRRIGER_TYPE == "FireStore":
         f'--trigger-event=providers/cloud.firestore/eventTypes/document.create',
         f'--trigger-resource=projects/mlbot-352401/databases/(default)/documents/{RESOURCE_PATH}',
         f"--timeout=540",
-        f'--set-build-env-vars=BIT_FLYER_API_KEY={os.environ["BIT_FLYER_API_KEY"]},BIT_FLYER_API_SECRET={os.environ["BIT_FLYER_API_SECRET"]}'
+        f'--set-env-vars=BIT_FLYER_API_KEY={os.environ["BIT_FLYER_API_KEY"]},BIT_FLYER_API_SECRET={os.environ["BIT_FLYER_API_SECRET"]}'
     ]
 cp = subprocess.run(cmd, encoding='utf-8', stdout=subprocess.PIPE)
 
