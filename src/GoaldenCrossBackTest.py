@@ -193,7 +193,7 @@ def GoaldenCrossBackTest(std_dict):
         file_name="process_bar.pkl",
         read_from_dt=date(2022, 5, 11),
         # read_from_dt=date(2018, 10, 1),
-        read_to_dt=date(2022, 6, 12),
+        read_to_dt=date(2022, 6, 13),
 
         initial_balance=100000,
         start_dt=date(2022, 5, 20),
@@ -248,17 +248,17 @@ if __name__ == "__main__":
     if not os.path.exists(tmp_output_path):
         os.mkdir(tmp_output_path)
 
-    with Pool(10) as p:
-        result = p.map(oputuna_run, range(200))
+    # with Pool(10) as p:
+    #     result = p.map(oputuna_run, range(200))
 
-    # std_dict = dict(
-    #     _long_ma_n=26,
-    #     _short_ma_n=5,
-    #     _sell_tilt_span=30,
-    #     _sell_tilt_threshold=4.9702008884991855,
-    #     _buysell_timing=1
-    # )
-    # res = GoaldenCrossBackTest(std_dict)
+    std_dict = dict(
+        _long_ma_n=18,
+        _short_ma_n=3,
+        _sell_tilt_span=8,
+        _sell_tilt_threshold=22.69003088824373,
+        _buysell_timing=1
+    )
+    res = GoaldenCrossBackTest(std_dict)
 
     # outputフォルダを削除
     shutil.rmtree(tmp_output_path)
