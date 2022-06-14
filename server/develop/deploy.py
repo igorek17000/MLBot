@@ -88,5 +88,6 @@ if CREATE_JOB:
         f'--schedule={SCHEDULE}',
         f"--topic={FUNC_NAME}",
         f'--message-body="{FUNC_NAME}"',
+        f'--time-zone="Asia/Tokyo"'
     ]
     cp = subprocess.run(cmd, encoding='utf-8', stdout=subprocess.PIPE)

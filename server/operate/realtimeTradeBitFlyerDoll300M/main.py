@@ -233,7 +233,7 @@ def judgeGoaldenCrossBitFlyer():
 
     # 既に判定済みであればスキップする。
     rule_doc = doc_ref.collection('trade_rule').document(RULE_NAME).get().to_dict()
-    if rule_doc["judge_latest_id"] == bar_list[-1]["end_id"]:
+    if rule_doc["judge_latest_id"] >= bar_list[-1]["end_id"]:
         return True
 
     doc_ref.collection('trade_rule').document(RULE_NAME).update({
