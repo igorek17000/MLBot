@@ -101,14 +101,19 @@ def _calc_ma_now(td_idx: int, n: int, tg_df: DataFrame, price_col: str) -> float
     return np.mean(tg_df.iloc[td_idx - n + 1:td_idx+1][price_col])
 
 
-def _buy(doc_ref, bar_list, price, rule_name, risk, balance, api: BitFlyerAPI):
+def _buy(doc_ref, bar_list, price, rule_name, risk, api: BitFlyerAPI):
     # 買えないことがあるので、5000円残すようにする。
 
-    if balance <= 5000:
+    balance_res = api.getBalance()
+    balance = [d for d in balance_res if d["currency_code"] == "JPY"][0]["amount"] * 0.5
+
+    buy_volume = ((balance - 5000) / price) * 100000000
+    buy_volume = np.floor(buy_volume) / 100000000
+
+    if buy_volume < 0.001:
+        print('残高不足', risk_volume)
         return False
 
-    buy_volume = ((balance - 5000) / price) * 1000
-    buy_volume = np.floor(buy_volume) / 1000
     # buy_volume = 0.001
 
     api_res = api.order(side="BUY", size=buy_volume)
@@ -138,33 +143,43 @@ def _buy(doc_ref, bar_list, price, rule_name, risk, balance, api: BitFlyerAPI):
 
 
 def _sell(doc_ref, buy_doc_list, price, rule_name, risk, api: BitFlyerAPI):
-    for buy_doc in buy_doc_list:
-        sell_doc = (
-            doc_ref
-            .collection('trade_rule')
-            .document(rule_name)
-            .collection("buy_list")
-            .document(str(buy_doc['end_id']))
-        )
+
+    balance_res = api.getBalance()
+    balance = [d for d in balance_res if d["currency_code"] == "BTC"][0]["amount"]
+
+    risk_volume = balance * (1-risk)
+    risk_volume = np.floor(risk_volume * 100000000) / 100000000
+    # risk_volume = 0.00199700 * (1-risk)
+    if risk_volume < 0.001:
+        print('残高不足', risk_volume)
+        return False
+
+    api_res = api.order(side="SELL", size=risk_volume)
+    print(api_res)
+
+    buy_doc_dicts = [
+        doc_ref
+        .collection('trade_rule')
+        .document(rule_name)
+        .collection("buy_list")
+        .document(str(buy_doc['end_id']))
+        for buy_doc in buy_doc_list
+    ]
+
+    sum_volume = sum([b.get().to_dict()["buy_volume"] for b in buy_doc_dicts])
+
+    # risk_volume = 0.00667488 + 0.01
+    for sell_doc in buy_doc_dicts:
         sell_doc_dict = sell_doc.get().to_dict()
-        risk_volume = sell_doc_dict["buy_volume"] * (1-risk)
-        risk_volume = np.floor(risk_volume * 100000000) / 100000000
-        # risk_volume = 0.00199700 * (1-risk)
-        if risk_volume < 0.001:
-            print('残高不足', risk_volume)
-            return False
-
-        api_res = api.order(side="SELL", size=risk_volume)
-        print(api_res)
-
-        amount = risk_volume * price * (1-risk)
+        risk_v = risk_volume * sell_doc_dict["buy_volume"] / sum_volume
+        amount = risk_v * price * (1-risk)
         sell_return = amount - sell_doc_dict["buy_amount"]
 
         sell_dict = {
             "status": "Sell",
             "sell_amount": amount,
             "sell_return": sell_return,
-            "sell_volume": risk_volume,
+            "sell_volume": risk_v,
             "sell_price": price,
             "sell_timestamp": datetime.now(),
             "child_order_acceptance_id": api_res["child_order_acceptance_id"]
@@ -258,18 +273,15 @@ def judgeGoaldenCrossBitFlyer():
     # N-1 時点では long > short & N 時点では long <= short となり、上に抜いたら買うタイミング
     if (yd_long_ma > yd_short_ma) & (td_long_ma <= td_short_ma):
 
-        balance_res = btfAPI.getBalance() * 0.1  # TODO 本番稼働時は変更
         price = btfAPI.get_ticker()["ltp"]
         risk = btfAPI.get_risk()["commission_rate"]
 
-        balance = [d for d in balance_res if d["currency_code"] == "JPY"][0]["amount"]
         trade_flg = _buy(
             doc_ref=doc_ref,
             bar_list=bar_list,
             price=price,
             rule_name=RULE_NAME,
             risk=risk,
-            balance=balance,
             api=btfAPI
         )
 
