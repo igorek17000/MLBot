@@ -184,23 +184,23 @@ def GoaldenCrossBackTest(std_dict):
     bt_stng = GoaldenCrossBackTestSetting(
 
         rule_name="GoaldenCross",
-        # version="0.1",
-        version="BitFlyer",
-        experiment_name="GoaldenCross",
+        version="0.1",
+        # version="BitFlyer",
+        experiment_name="GoaldenCrossBTF_kai_pmax",
 
         # dir_path="../data/processing/bar/GMO/BTC/doll/threshold=300000000/bar/",
         dir_path="../data/processing/bar/bitFlyer/BTC/doll/threshold=300000000/bar/",
         file_name="process_bar.pkl",
         read_from_dt=date(2022, 5, 11),
         # read_from_dt=date(2018, 10, 1),
-        read_to_dt=date(2022, 6, 13),
+        read_to_dt=date(2022, 6, 17),
 
         initial_balance=100000,
         start_dt=date(2022, 5, 20),
         # start_dt=date(2019, 1, 1),
         price_col="close",
 
-        risk=0.05 * 0.01,
+        risk=0.0015,
 
         ** std_dict
     )
@@ -216,7 +216,7 @@ def optuna_trial(trial):
         _long_ma_n=trial.suggest_int("_long_ma_n", 5, 50),
         _short_ma_n=trial.suggest_int("_short_ma_n", 1, 50),
         _sell_tilt_span=trial.suggest_int("_sell_tilt_span", 1, 30),
-        _sell_tilt_threshold=trial.suggest_float("_sell_tilt_threshold", 0.001, 100),
+        _sell_tilt_threshold=trial.suggest_int("_sell_tilt_threshold", 0, 150, step=10),
         _buysell_timing=1
     )
 
@@ -228,7 +228,7 @@ def optuna_trial(trial):
 
 def oputuna_run(idx):
     print(idx)
-    study_name = "GoaldenCrossBTFpmax"
+    study_name = "GoaldenCrossBTF_kai4_pmax"
     oputuna_db_name = "oputuna_db"
     postgre_user = os.environ.get('MLFLOW_POSTGRE_USER')
     postgre_pass = os.environ.get('MLFLOW_POSTGRE_PASS')
@@ -248,17 +248,17 @@ if __name__ == "__main__":
     if not os.path.exists(tmp_output_path):
         os.mkdir(tmp_output_path)
 
-    # with Pool(10) as p:
-    #     result = p.map(oputuna_run, range(200))
+    with Pool(20) as p:
+        result = p.map(oputuna_run, range(1000))
 
-    std_dict = dict(
-        _long_ma_n=18,
-        _short_ma_n=3,
-        _sell_tilt_span=8,
-        _sell_tilt_threshold=22.69003088824373,
-        _buysell_timing=1
-    )
-    res = GoaldenCrossBackTest(std_dict)
+    # std_dict = dict(
+    #     _long_ma_n=18,
+    #     _short_ma_n=3,
+    #     _sell_tilt_span=8,
+    #     _sell_tilt_threshold=22.69003088824373,
+    #     _buysell_timing=1
+    # )
+    # res = GoaldenCrossBackTest(std_dict)
 
     # outputフォルダを削除
     shutil.rmtree(tmp_output_path)

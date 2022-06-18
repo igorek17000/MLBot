@@ -360,7 +360,7 @@ class BackTest:
         sell_return_std = np.std(sell_return_list, ddof=1)  # 不偏標準偏差
 
         # 帰無仮説　リターンの期待値は、0よりも小さい
-        t_res = stats.ttest_1samp(sell_return_list, 0.0, alternative="greater")
+        t_res = stats.ttest_1samp(return_rate_list, 0.0, alternative="greater")  # 還元率を検定する。
         t_value = t_res.statistic
         p_value = t_res.pvalue
 
@@ -426,7 +426,7 @@ class BackTest:
             # this_return = 0
 
             # 購買する場合
-            buy_price = max(ohlcv_data.loc[idx]["high"], ohlcv_data.loc[idx-1]["high"])
+            buy_price = ohlcv_data.loc[idx]["high"]
 
             if idx == next_buy_idx:
                 buy_res = self._buy(
@@ -442,7 +442,7 @@ class BackTest:
             # 売却する場合
             elif idx == next_sell_idx:
 
-                sell_price = min(ohlcv_data.loc[idx]["low"], ohlcv_data.loc[idx-1]["low"])
+                sell_price = ohlcv_data.loc[idx]["low"]
 
                 sell_res = self._sell(
                     context=self.context, now_idx=idx,
