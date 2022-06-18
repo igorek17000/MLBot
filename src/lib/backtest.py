@@ -421,15 +421,18 @@ class BackTest:
         next_sell_idx = None
         latest_buy_judge_res = None
         latest_sell_judge_res = None
+
         for idx in range(start_idx, len(ohlcv_data)):
             # this_return = 0
 
             # 購買する場合
+            buy_price = max(ohlcv_data.loc[idx]["high"], ohlcv_data.loc[idx-1]["high"])
+
             if idx == next_buy_idx:
                 buy_res = self._buy(
                     context=self.context, now_idx=idx,
                     volume=latest_buy_judge_res["buy_volume"],
-                    price=ohlcv_data.loc[idx][bt_stng.price_col],
+                    price=buy_price,
                     risk=bt_stng.risk
                 )
                 next_buy_idx = None
@@ -438,10 +441,13 @@ class BackTest:
 
             # 売却する場合
             elif idx == next_sell_idx:
+
+                sell_price = min(ohlcv_data.loc[idx]["low"], ohlcv_data.loc[idx-1]["low"])
+
                 sell_res = self._sell(
                     context=self.context, now_idx=idx,
                     sell_order_list=latest_sell_judge_res["sell_order_list"],
-                    price=ohlcv_data.loc[idx][bt_stng.price_col],
+                    price=sell_price,
                     risk=bt_stng.risk
                 )
                 next_sell_idx = None
